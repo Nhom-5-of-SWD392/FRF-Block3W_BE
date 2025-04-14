@@ -1,0 +1,6 @@
+@FRF_Project_Block3W_HostAddress = http://localhost:5163
+
+GET {{FRF_Project_Block3W_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
