@@ -30,6 +30,7 @@ namespace Data.Entities
 
         // Foreign Keys
         public Guid RoleId { get; set; }
+
         [ForeignKey("RoleId")]
         public Role? Roles { get; set; }
     }
