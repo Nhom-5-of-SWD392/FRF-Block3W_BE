@@ -18,7 +18,6 @@
         public Guid Id { get; set; }
         public string? Avatar { get; set; }
         public string? Name { get; set; }
-        public string? Role { get; set; }
         public string? Email { get; set; }
         public long ExpiresInMilliseconds { get; set; }
     }
@@ -30,6 +29,12 @@
         public string? Bucket { get; set; }
     }
 
+    public class GoogleModel
+    {
+        public string? ClientId { get; set; }
+        public string? ClientSecret { get; set; }
+        public string? RedirectUri { get; set; }
+    }
     public class MailSetupModel
     {
         public string? FromEmail { get; set; }

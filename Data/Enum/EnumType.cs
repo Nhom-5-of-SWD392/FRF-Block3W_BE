@@ -4,11 +4,17 @@
     {
     }
 
+    public enum UserRole
+    {
+        Member,
+        Administrator
+    }
+
     public enum Gender
     {
         Male,
         Female,
-        Others
+        Other
     }
 
     public enum ApplicationStatus
@@ -18,10 +24,48 @@
 		Rejected
 	}
 
+    public enum QuestionType
+    {
+        Essay,
+        MultipleChoice
+    }
+
+    public enum RangeScoreResult
+    {
+        Excellent,
+        Good,
+        Average,
+        Poor,
+        Bad
+    }
+
     public enum PostStatus
 	{
 		Pending,
 		Approved,
 		Rejected
 	}
+
+    public enum MediaType
+    {
+        Image,
+        Video,
+    }
+
+    public enum QuizType
+    {
+        Interview,
+        Quiz,
+    }
+
+    public enum ReactionType
+    {
+        Haha,
+        Love,
+        Happy,
+        Sad,
+        Good,
+        Bad,
+        Like
+    }
 }

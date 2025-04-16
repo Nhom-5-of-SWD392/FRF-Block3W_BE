@@ -9,7 +9,7 @@ namespace Service.Utilities
 {
     public interface IJwtUtils
     {
-        public JWTToken GenerateToken(IEnumerable<Claim> claims, JwtModel? jwtModel, User user, Role role);
+        public JWTToken GenerateToken(IEnumerable<Claim> claims, JwtModel? jwtModel, User user);
     }
 
     public class JwtUtils : IJwtUtils
@@ -19,7 +19,7 @@ namespace Service.Utilities
 
         }
 
-        public JWTToken GenerateToken(IEnumerable<Claim> claims, JwtModel? jwtModel, User user, Role role)
+        public JWTToken GenerateToken(IEnumerable<Claim> claims, JwtModel? jwtModel, User user)
         {
             var authSignKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtModel?.Secret ?? ""));
             var expirationTime = DateTime.UtcNow.AddDays(1);
@@ -38,9 +38,8 @@ namespace Service.Utilities
             {
                 TokenString = tokenString,
                 Id = user.Id,
-                Name = user.FullName,
-                Avatar = user.Avatar,
-                Role = role.Name,
+                Name = user.FirstName + " " + user.LastName,
+                Avatar = user.AvatarUrl,
                 Email = user.Email,
                 ExpiresInMilliseconds = (long)(expirationTime - DateTime.UtcNow).TotalMilliseconds
             };

@@ -1,4 +1,6 @@
 ﻿using Data.Models;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
@@ -20,6 +22,15 @@ namespace InternSystem.Controllers
             _jwtUtils = jwtUtils;
         }
 
+        [HttpGet("login-google")]
+        public IActionResult LoginWithGoogle()
+        {
+            var redirectUrl = Url.Action("GoogleResponse", "Auth");
+            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+        }
+
+
         [AllowAnonymous]
         [HttpPost("signin")]
         public async Task<IActionResult> Login(UserRequest model)
@@ -29,6 +40,19 @@ namespace InternSystem.Controllers
                 return BadRequest();
             }
             var data = await _userService.Login(model);
+            return Ok(data);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("signin-google")]
+        public async Task<IActionResult> LoginWithGoogle([FromQuery] GoogleLoginRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
+            var data = await _userService.LoginWithGoogle(request.GoogleIdToken);
+
             return Ok(data);
         }
     }

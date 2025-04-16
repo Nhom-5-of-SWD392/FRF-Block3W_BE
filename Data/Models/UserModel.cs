@@ -21,17 +21,21 @@ namespace Data.Models
 
     public class UserCreateModel
     {
-        public string? FullName { get; set; }
-        public string? Email { get; set; }
-        public string? UserName { get; set; }
-        [JsonIgnore]
-        public string? Password { get; set; }
-        public Gender Gender { get; set; }
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
         public string? Phone { get; set; }
+        public DateTime Dob { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string UserName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public Gender Gender { get; set; }
+        public string? Bio { get; set; }
         public string? Address { get; set; }
-        public string? Avatar { get; set; }
-        public bool IsActive { get; set; }
-        public Guid RoleId { get; set; }
+        public string AvatarUrl { get; set; } = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
+        public string? ForgotPwdToken { get; set; }
+        public UserRole Role { get; set; }
+        public bool? IsModerator { get; set; }
+        public string? GoogleId { get; set; }
     }
 
     public class UserUpdateModel
@@ -80,5 +84,10 @@ namespace Data.Models
         public string NewPassword { get; set; } = null!;
         [Required]
         public string ConfirmPassword { get; set; } = null!;
+    }
+
+    public class GoogleLoginRequest
+    {
+        public string? GoogleIdToken { get; set; }
     }
 }

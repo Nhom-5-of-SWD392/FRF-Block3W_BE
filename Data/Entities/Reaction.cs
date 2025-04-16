@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
+﻿using Data.Enum;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Data.Entities
+namespace Data.Entities;
+
+public class Reaction : BaseEntities
 {
-	public class Reaction : BaseEntities
-	{
-		[Required(ErrorMessage = "Reaction Type is required")]
-		public string ReactionType { get; set; } = null!;
+	public ReactionType ReactionType { get; set; }
 
-		//Foreign Keys
-		public Guid UserId { get; set; } //Which user create this reaction
+	//Foreign Keys
+	public Guid UserId { get; set; }
+	[ForeignKey("UserId")]
+	public User? User { get; set; }
 
-		[ForeignKey("UserId")]
-		public User? User { get; set; }
-
-	}
+    public Guid CommentId { get; set; }
+    [ForeignKey("CommentId")]
+    public Comment? Comment { get; set; }
 }

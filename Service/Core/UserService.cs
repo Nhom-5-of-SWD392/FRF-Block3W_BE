@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Data.EFCore;
 using Data.Entities;
+using Data.Enum;
 using Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,219 +12,268 @@ using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
-namespace Service.Core
+namespace Service.Core;
+
+public interface IUserService
 {
-    public interface IUserService
+    Task<JWTToken> Login(UserRequest model);
+    Task<JWTToken> LoginWithGoogle(string idToken);
+    Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
+    Task<UserViewModel> GetById(Guid id);
+    Task<Guid> Create(UserCreateModel model);
+    Task<Guid> Update(Guid id, UserUpdateModel model);
+    Task<Guid> Delete(Guid id);
+    Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
+}
+public class UserService : IUserService
+{
+    private readonly DataContext _dataContext;
+    private ISortHelpers<User> _sortHelper;
+    private readonly IMapper _mapper;
+    private readonly IJwtUtils _jwtUtils;
+    private readonly IConfiguration _configuration;
+    private readonly IGoogleAuthService _googleAuthService;
+    //private readonly IFilterHelper<User> _filterHelperUser;
+
+
+    public UserService(DataContext dataContext, ISortHelpers<User> sortHelper, IMapper mapper, IConfiguration configuration, IJwtUtils jwtUtils, IGoogleAuthService googleAuthService)
     {
-        Task<JWTToken> Login(UserRequest model);
-        Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
-        Task<UserViewModel> GetById(Guid id);
-        Task<Guid> Create(UserCreateModel model);
-        Task<Guid> Update(Guid id, UserUpdateModel model);
-        Task<Guid> Delete(Guid id);
-        Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
+        _dataContext = dataContext;
+        _sortHelper = sortHelper;
+        _mapper = mapper;
+        _configuration = configuration;
+        _jwtUtils = jwtUtils;
+        _googleAuthService = googleAuthService;
     }
-    public class UserService : IUserService
+
+    public async Task<JWTToken> Login(UserRequest model)
     {
-        private readonly DataContext _dataContext;
-        private ISortHelpers<User> _sortHelper;
-        private readonly IMapper _mapper;
-        private readonly IJwtUtils _jwtUtils;
-        private readonly IConfiguration _configuration;
-        //private readonly IFilterHelper<User> _filterHelperUser;
-
-
-        public UserService(DataContext dataContext, ISortHelpers<User> sortHelper, IMapper mapper, IConfiguration configuration, IJwtUtils jwtUtils)
+        try
         {
-            _dataContext = dataContext;
-            _sortHelper = sortHelper;
-            _mapper = mapper;
-            _configuration = configuration;
-            _jwtUtils = jwtUtils;
-        }
-
-        public async Task<JWTToken> Login(UserRequest model)
-        {
-            try
-            {
-                var user = await _dataContext.User
+            var user = await _dataContext.User
                 .Where(x => !x.IsDeleted && x.UserName == model.UserName)
                 .FirstOrDefaultAsync();
-                if (user == null)
-                {
-                    throw new AppException(ErrorMessage.InvalidAccount);
-                }
-                if (!BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
-                {
-                    throw new AppException(ErrorMessage.InvalidAccount);
-                }
-
-                var getRole = await _dataContext.Role
-                    .Where(x => !x.IsDeleted && x.Id == user.RoleId)
-                    .FirstOrDefaultAsync();
-
-                var authClaims = new List<Claim>
-                {
-                    new Claim("id", user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user?.FullName ?? ""),
-                    new Claim(ClaimTypes.Email, user?.Email ?? ""),
-                    new Claim("avartar", user?.Avatar ?? ""),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                    new Claim(ClaimTypes.Role, getRole.Name.ToString()),
-                };
-
-                var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user, getRole);
-
-                _dataContext.User.Update(user);
-                await _dataContext.SaveChangesAsync();
-
-                return token;
-            }
-            catch (Exception e)
+            if (user == null)
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
+                throw new AppException(ErrorMessage.InvalidAccount);
             }
-        } 
-
-        public async Task<Guid> Update(Guid id, UserUpdateModel model)
-        {
-            try
+            if (!BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
             {
-                var data = await GetUser(id);
-                if (data == null)
-                {
-                    throw new AppException(ErrorMessage.IdNotExist);
-                }
-                var updateData = _mapper.Map(model, data);
-
-                _dataContext.User.Update(updateData);
-
-                await _dataContext.SaveChangesAsync();
-                return data.Id;
+                throw new AppException(ErrorMessage.InvalidAccount);
             }
-            catch (Exception e)
+
+            var authClaims = new List<Claim>
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
-            }
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
+                new Claim(ClaimTypes.Email, user?.Email ?? ""),
+                new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
+                new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
+
+            var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+
+            _dataContext.User.Update(user);
+            await _dataContext.SaveChangesAsync();
+
+            return token;
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
 
-        public async Task<Guid> Delete(Guid id)
+    public async Task<JWTToken> LoginWithGoogle(string idToken)
+    {
+        try
+        {
+            var authenticateResult = await _googleAuthService.ValidateGoogleToken(idToken);
+            if (authenticateResult == null)
+            {
+                throw new AppException(ErrorMessage.AccessTokenFail);
+            }
+            var user = await _dataContext.User
+                .Where(i => i.Email == authenticateResult.Email || i.GoogleId == authenticateResult.Subject && !i.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                var newUser = new UserCreateModel
+                {
+                    Email = authenticateResult.Email,
+                    FirstName = authenticateResult.GivenName ?? "",
+                    LastName = authenticateResult.FamilyName ?? "",
+                    AvatarUrl = authenticateResult.Picture ?? "",
+                    Role = UserRole.Member,
+                    UserName = authenticateResult.Email.Split('@')[0],
+                    IsModerator = false,
+                    Gender = Gender.Other,
+                    GoogleId = authenticateResult.Subject
+                };
+                var createUser = await Create(newUser);
+            }
+
+            var authClaims = new List<Claim>
+            {
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
+                new Claim(ClaimTypes.Email, user?.Email ?? ""),
+                new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
+                new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
+
+            var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+
+            return token;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> Update(Guid id, UserUpdateModel model)
+    {
+        try
         {
             var data = await GetUser(id);
             if (data == null)
             {
                 throw new AppException(ErrorMessage.IdNotExist);
             }
-            data.IsDeleted = true;
-            _dataContext.User.Update(data);
+            var updateData = _mapper.Map(model, data);
+
+            _dataContext.User.Update(updateData);
+
             await _dataContext.SaveChangesAsync();
             return data.Id;
         }
-
-        public async Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model)
+        catch (Exception e)
         {
-            try
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> Delete(Guid id)
+    {
+        var data = await GetUser(id);
+        if (data == null)
+        {
+            throw new AppException(ErrorMessage.IdNotExist);
+        }
+        data.IsDeleted = true;
+        _dataContext.User.Update(data);
+        await _dataContext.SaveChangesAsync();
+        return data.Id;
+    }
+
+    public async Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
             {
-                if (string.IsNullOrEmpty(userId))
-                {
-                    throw new AppException("User is not authorized.");
-                }
-
-                var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
-
-                if (user == null)
-                {
-                    throw new AppException("User not found.");
-                }
-
-                if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.Password))
-                {
-                    throw new AppException("Current password is incorrect.");
-                }
-
-                if (!IsValid(model.NewPassword))
-                    throw new AppException(
-                        "Password does not meet the required complexity standards:\n" +
-                        "- At least 8 characters long\n" +
-                        "- Include UPPERCASE and lowercase letters\n" +
-                        "- At least one digit\n" +
-                        "- At least one special character @#$%^&*!_"
-                    );
-
-                if (model.NewPassword != model.ConfirmPassword)
-                {
-                    throw new AppException("New password and confirm password do not match.");
-                }
-
-                user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-
-                _dataContext.User.Update(user);
-
-                await _dataContext.SaveChangesAsync();
-
-                return "Change password successfully.";
+                throw new AppException("User is not authorized.");
             }
-            catch (Exception e)
+
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
+
+            if (user == null)
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
+                throw new AppException("User not found.");
             }
-        }
 
-        private void SearchByKeyWord(ref IQueryable<User> users, string keyword)
-        {
-            if (!users.Any() || string.IsNullOrWhiteSpace(keyword))
-                return;
-            users = users.Where(o => o.FullName.ToLower().Contains(keyword.Trim().ToLower()) || o.UserName.ToLower().Contains(keyword.Trim().ToLower()) || o.Email.ToLower().Contains(keyword.Trim().ToLower()));
-        }
-
-        public bool IsValid(string password)
-        {
-            if (password.Length < 8) return false;
-
-            if (!Regex.IsMatch(password, @"[A-Z]")) return false;
-
-            if (!Regex.IsMatch(password, @"[a-z]")) return false;
-
-            if (!Regex.IsMatch(password, @"\d")) return false;
-
-            if (!Regex.IsMatch(password, @"[@#$%^&*!_]")) return false;
-
-            return true;
-        }
-
-        private async Task<User> GetUser(Guid id)
-        {
-            try
+            if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.Password))
             {
-                var data = await _dataContext.User
-                    .Where(x => !x.IsDeleted && x.Id == id)
-                    .SingleOrDefaultAsync();
-                if (data == null) throw new AppException(ErrorMessage.IdNotExist);
-                return data;
+                throw new AppException("Current password is incorrect.");
             }
-            catch (Exception e)
+
+            if (!IsValid(model.NewPassword))
+                throw new AppException(
+                    "Password does not meet the required complexity standards:\n" +
+                    "- At least 8 characters long\n" +
+                    "- Include UPPERCASE and lowercase letters\n" +
+                    "- At least one digit\n" +
+                    "- At least one special character @#$%^&*!_"
+                );
+
+            if (model.NewPassword != model.ConfirmPassword)
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
+                throw new AppException("New password and confirm password do not match.");
             }
-        }
 
-        public Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
-        {
-            throw new NotImplementedException();
-        }
+            user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
 
-        public Task<UserViewModel> GetById(Guid id)
-        {
-            throw new NotImplementedException();
-        }
+            _dataContext.User.Update(user);
 
-        public Task<Guid> Create(UserCreateModel model)
-        {
-            throw new NotImplementedException();
+            await _dataContext.SaveChangesAsync();
+
+            return "Change password successfully.";
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    private void SearchByKeyWord(ref IQueryable<User> users, string keyword)
+    {
+        if (!users.Any() || string.IsNullOrWhiteSpace(keyword))
+            return;
+        users = users.Where(o => o.UserName.ToLower().Contains(keyword.Trim().ToLower()) || o.Email.ToLower().Contains(keyword.Trim().ToLower()));
+    }
+
+    public bool IsValid(string password)
+    {
+        if (password.Length < 8) return false;
+
+        if (!Regex.IsMatch(password, @"[A-Z]")) return false;
+
+        if (!Regex.IsMatch(password, @"[a-z]")) return false;
+
+        if (!Regex.IsMatch(password, @"\d")) return false;
+
+        if (!Regex.IsMatch(password, @"[@#$%^&*!_]")) return false;
+
+        return true;
+    }
+
+    private async Task<User> GetUser(Guid id)
+    {
+        try
+        {
+            var data = await _dataContext.User
+                .Where(x => !x.IsDeleted && x.Id == id)
+                .SingleOrDefaultAsync();
+            if (data == null) throw new AppException(ErrorMessage.IdNotExist);
+            return data;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<UserViewModel> GetById(Guid id)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Guid> Create(UserCreateModel model)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -24,8 +24,8 @@ namespace FRF_Project_Block3W.Extensions
         {
             services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder =>
                     builder.AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowAnyOrigin())
+                           .AllowAnyMethod()
+                           .AllowAnyOrigin())
             );
         }
 
@@ -33,12 +33,14 @@ namespace FRF_Project_Block3W.Extensions
         {
             services.AddScoped<IJwtUtils, JwtUtils>();
 
+            services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+
             //User
             services.AddScoped<IUserService, UserService>();
             services.AddScoped<ISortHelpers<User>, SortHelper<User>>();
         }
 
-        public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel)
+        public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
         {
             services
                 .AddAuthentication(op =>
@@ -59,6 +61,12 @@ namespace FRF_Project_Block3W.Extensions
                         ValidIssuer = jwtModel?.ValidIssuer,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtModel?.Secret ?? ""))
                     };
+                })
+                .AddCookie()
+                .AddGoogle(googleOptions =>
+                {
+                    googleOptions.ClientId = googleModel?.ClientId;
+                    googleOptions.ClientSecret = googleModel?.ClientSecret;
                 });
         }
 

@@ -8,18 +8,6 @@ namespace Service.Mapper
     {
         public MapperProfiles()
         {
-            //Role
-            CreateMap<RoleCreateModel, Role>();
-            CreateMap<Role, RoleViewModel>();
-            CreateMap<RoleUpdateModel, Role>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
-
-            //Permission
-            CreateMap<PermissionCreateModel, Permission>();
-            CreateMap<Permission, PermissionViewModel>();
-            CreateMap<PermissionUpdateModel, Permission>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
-
             //User
             CreateMap<UserCreateModel, User>();
             CreateMap<User, UserViewModel>();
