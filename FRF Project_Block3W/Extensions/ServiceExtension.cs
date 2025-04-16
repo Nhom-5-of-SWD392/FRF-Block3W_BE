@@ -31,6 +31,8 @@ public static class ServiceExtension
 
     public static void AddBusinessServices(this IServiceCollection services)
     {
+        services.AddSingleton<ICloudinaryService, CloudinaryService>();
+
         services.AddScoped<IJwtUtils, JwtUtils>();
 
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();

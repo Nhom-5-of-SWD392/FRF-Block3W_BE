@@ -1,4 +1,5 @@
-﻿using Data.Enum;
+﻿using Data.Entities;
+using Data.Enum;
 using System.Numerics;
 
 namespace Data.Models;
@@ -54,7 +55,17 @@ public class QuizDetailResponse
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public QuizType Type { get; set; }
+    public List<QuizRangeScoreResponse> QuizRangeScore { get; set; } = new();
     public List<QuizQuestionResponse> Questions { get; set; } = new();
+
+}
+
+public class QuizRangeScoreResponse
+{
+    public Guid Id { get; set; }    
+    public int MinScore { get; set; } = 0;
+    public int MaxScore { get; set; } = 0;
+    public RangeScoreResult Result { get; set; }
 }
 
 public class QuizQuestionResponse

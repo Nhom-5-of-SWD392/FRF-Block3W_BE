@@ -3,14 +3,18 @@ using Data.EFCore;
 using Data.Entities;
 using Data.Enum;
 using Data.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 using Service.Utilities;
 using System.Data;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Service.Core;
 
@@ -19,13 +23,16 @@ public interface IUserService
     Task<JWTToken> Login(UserRequest model);
     //Task<JWTToken> LoginWithGoogle(string idToken);
     Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
-    Task<UserViewModel> GetById(Guid id);
+    Task<User> GetById(Guid id);
     Task<Guid> Create(UserCreateModel model);
     Task<Guid> Update(Guid id, UserUpdateModel model);
     Task<Guid> Delete(Guid id);
     Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
     Task<string> RequestPasswordResetAsync(PasswordResetRequestModel model);
     Task<string> ResetPasswordAsync(PasswordResetModel passwordResetmodel);
+    Task<Guid> RegisterAsync(RegisterUserModel model);
+    Task<Guid> RegisterModeratorAsync(string userId);
+    Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model);
 }
 public class UserService : IUserService
 {
@@ -36,6 +43,7 @@ public class UserService : IUserService
     private readonly IConfiguration _configuration;
     private readonly IGoogleAuthService _googleAuthService;
     private readonly IEmailService _emailService;
+    private readonly ICloudinaryService _cloudinaryService;
     //private readonly IFilterHelper<User> _filterHelperUser;
 
 
@@ -46,7 +54,8 @@ public class UserService : IUserService
             IConfiguration configuration, 
             IJwtUtils jwtUtils, 
             IGoogleAuthService googleAuthService,
-            IEmailService emailService)
+            IEmailService emailService,
+            ICloudinaryService cloudinaryService)
     {
         _dataContext = dataContext;
         _sortHelper = sortHelper;
@@ -55,6 +64,7 @@ public class UserService : IUserService
         _jwtUtils = jwtUtils;
         _googleAuthService = googleAuthService;
         _emailService = emailService;
+        _cloudinaryService = cloudinaryService;
     }
 
     public async Task<JWTToken> Login(UserRequest model)
@@ -147,12 +157,31 @@ public class UserService : IUserService
     //        throw new AppException(e.Message);
     //    }
     //}
+    public async Task<User> GetById(Guid id)
+    {
+        try
+        {
+            var user = await _dataContext.User
+                .FirstOrDefaultAsync(u => !u.IsDeleted && u.Id == id);
+            if (user == null)
+            {
+                throw new AppException(ErrorMessage.UserNotFound);
+            }
+
+            return user;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
 
     public async Task<Guid> Update(Guid id, UserUpdateModel model)
     {
         try
         {
-            var data = await GetUser(id);
+            var data = await GetById(id);
             if (data == null)
             {
                 throw new AppException(ErrorMessage.IdNotExist);
@@ -173,11 +202,8 @@ public class UserService : IUserService
 
     public async Task<Guid> Delete(Guid id)
     {
-        var data = await GetUser(id);
-        if (data == null)
-        {
-            throw new AppException(ErrorMessage.IdNotExist);
-        }
+        var data = await GetById(id);
+
         data.IsDeleted = true;
         _dataContext.User.Update(data);
         await _dataContext.SaveChangesAsync();
@@ -298,12 +324,103 @@ public class UserService : IUserService
         }
     }
 
-    private void SearchByKeyWord(ref IQueryable<User> users, string keyword)
+    public async Task<Guid> RegisterAsync(RegisterUserModel model)
     {
-        if (!users.Any() || string.IsNullOrWhiteSpace(keyword))
-            return;
-        users = users.Where(o => o.UserName.ToLower().Contains(keyword.Trim().ToLower()) || o.Email.ToLower().Contains(keyword.Trim().ToLower()));
+        if (model.Password != model.ConfirmPassword)
+            throw new AppException("Passwords do not match.");
+
+        var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName);
+        if (existingUser != null)
+            throw new AppException("Email or username already exists.");
+
+        string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
+
+        string path = model.UserName + "/Avatar";
+
+        if (model.AvatarUrl != null)
+        {
+            avatarUrl = await _cloudinaryService.UploadImageAsync(model.AvatarUrl, path);
+        }
+
+        var user = new User
+        {
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            Email = model.Email,
+            Phone = model.Phone,
+            UserName = model.UserName,
+            Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
+            Dob = DateTime.SpecifyKind(model.Dob, DateTimeKind.Utc),
+            Gender = model.Gender,
+            Bio = model.Bio,
+            Address = model.Address,
+            AvatarUrl = avatarUrl,
+            Role = UserRole.Member
+        };
+
+        await _dataContext.User.AddAsync(user);
+        await _dataContext.SaveChangesAsync();
+
+        return user.Id;
     }
+
+    public async Task<Guid> RegisterModeratorAsync(string userId)
+    {
+        if (string.IsNullOrEmpty(userId))
+        {
+            throw new AppException(ErrorMessage.Unauthorize);
+        }
+
+        var existing = await _dataContext.ModeratorApplication
+            .FirstOrDefaultAsync(x => x.RegisterById == new Guid(userId) && x.Status == ApplicationStatus.Pending);
+
+        if (existing != null) 
+            throw new AppException(ErrorMessage.AlreadyApplyModerator);
+
+        var application = new ModeratorApplication
+        {
+            RegisterById = new Guid(userId),
+            Status = ApplicationStatus.Pending
+        };
+
+        await _dataContext.ModeratorApplication.AddAsync(application);
+
+        await _dataContext.SaveChangesAsync();
+
+        return application.Id;
+    }
+
+    public async Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model)
+    {
+        if (string.IsNullOrEmpty(confirmedId))
+        {
+            throw new AppException(ErrorMessage.Unauthorize);
+        }
+
+        var request = await _dataContext.ModeratorApplication
+            .Include(x => x.Registrant)
+            .FirstOrDefaultAsync(x => x.Id == requestId);
+
+        if (request == null) throw new AppException(ErrorMessage.RequestNotFound);
+
+        if (request.Status != ApplicationStatus.Pending)
+            throw new AppException(ErrorMessage.RequestAlreadyProcessed);
+
+        request.ConfirmedById = new Guid(confirmedId);
+        request.UpdatedBy = new Guid(confirmedId);
+        request.Status = model.IsApproved ? ApplicationStatus.Approved : ApplicationStatus.Rejected;
+
+        if (model.IsApproved)
+        {
+            var user = request.Registrant!;
+            user.IsModerator = true;
+        }
+
+        await _dataContext.SaveChangesAsync();
+
+        return "Approved!";
+    }
+
 
     public bool IsValid(string password)
     {
@@ -320,29 +437,7 @@ public class UserService : IUserService
         return true;
     }
 
-    private async Task<User> GetUser(Guid id)
-    {
-        try
-        {
-            var data = await _dataContext.User
-                .Where(x => !x.IsDeleted && x.Id == id)
-                .SingleOrDefaultAsync();
-            if (data == null) throw new AppException(ErrorMessage.IdNotExist);
-            return data;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw new AppException(e.Message);
-        }
-    }
-
     public Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<UserViewModel> GetById(Guid id)
     {
         throw new NotImplementedException();
     }

@@ -22,12 +22,13 @@ public class JWTToken
     public long ExpiresInMilliseconds { get; set; }
 }
 
-public class FirebaseStorageModel
+public class CloudinarySettings
 {
-    public string? FirebaseSDKFile { get; set; }
-    public string? ProjectId { get; set; }
-    public string? Bucket { get; set; }
+    public string? CloudName { get; set; }
+    public string? ApiKey { get; set; }
+    public string? ApiSecret { get; set; }
 }
+
 
 public class GoogleModel
 {

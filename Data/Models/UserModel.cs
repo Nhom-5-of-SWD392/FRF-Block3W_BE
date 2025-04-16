@@ -95,7 +95,19 @@ public class PasswordResetModel
     public string NewPassword { get; set; } = string.Empty;
 }
 
-//public class GoogleLoginRequest
-//{
-//    public string? GoogleIdToken { get; set; }
-//}
+public class RegisterUserModel
+{
+    public IFormFile? AvatarUrl { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
+    public DateTime Dob { get; set; }
+    public Gender Gender { get; set; }
+    public string? Bio { get; set; }
+    public string? Address { get; set; }
+}
+

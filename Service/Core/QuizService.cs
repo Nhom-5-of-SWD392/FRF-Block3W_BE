@@ -14,6 +14,9 @@ public interface IQuizService
     Task<PagingModel<QuizViewModel>> GetAll(QuizQueryModel query);
     Task<Guid> CreateFullQuizAsync(string userId, CreateQuizRequest model);
     Task<QuizDetailResponse> GetQuizDetailAsync(Guid quizId);
+    Task<Guid> AddQuizRangeScore(string userId, Guid quizId, List<QuizRangeScoreCreateModel> models);
+    Task<Guid> SoftDelete(Guid id);
+    Task<Guid> HardDelete(Guid id);
 }
 
 public class QuizService : IQuizService
@@ -37,7 +40,7 @@ public class QuizService : IQuizService
                 .Include(q => q.QuizQuestions)
                 .Where(q => !q.IsDeleted);
 
-            SearchByKeyWord(ref queryQuiz, query.Search);
+            queryQuiz = queryQuiz.SearchByKeyword(q => q.Name, query.Search);
 
             var sortData = _sortHelpers.ApplySort(queryQuiz, query.OrderBy!);
 
@@ -62,6 +65,26 @@ public class QuizService : IQuizService
             };
 
             return pagingData;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Quiz> GetById(Guid id)
+    {
+        try
+        {
+            var quiz = await _dataContext.Quiz
+                .FirstOrDefaultAsync(q => !q.IsDeleted && q.Id == id);
+            if (quiz == null)
+            {
+                throw new AppException(ErrorMessage.QuizNotExist);
+            }
+
+            return quiz;
         }
         catch (Exception e)
         {
@@ -149,6 +172,7 @@ public class QuizService : IQuizService
         var quiz = await _dataContext.Quiz
             .Include(q => q.QuizQuestions)
                 .ThenInclude(q => q.QuizAnswers)
+            .Include(q => q.QuizRangeScores)
             .FirstOrDefaultAsync(q => q.Id == quizId && !q.IsDeleted);
 
         if (quiz == null)
@@ -160,6 +184,13 @@ public class QuizService : IQuizService
             Name = quiz.Name,
             Description = quiz.Description,
             Type = quiz.Type,
+            QuizRangeScore = quiz.QuizRangeScores.Select(q => new QuizRangeScoreResponse
+            {
+                Id = q.Id,
+                MinScore = q.MinScore,
+                MaxScore = q.MaxScore,
+                Result = q.Result
+            }).ToList(),
             Questions = quiz.QuizQuestions.Select(q => new QuizQuestionResponse
             {
                 Id = q.Id,
@@ -177,12 +208,77 @@ public class QuizService : IQuizService
         return response;
     }
 
+    public async Task<Guid> AddQuizRangeScore(string userId, Guid quizId, List<QuizRangeScoreCreateModel> models)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var existQuiz = await GetById(quizId);
+
+            foreach (var model in models)
+            {
+                if (model.MinScore > model.MaxScore)
+                    throw new AppException(ErrorMessage.MinCantGreaterMax);
+
+                var range = new QuizRangeScore
+                {
+                    MinScore = model.MinScore,
+                    MaxScore = model.MaxScore,
+                    Result = model.Result,
+                    QuizId = existQuiz.Id
+                };
+
+                await _dataContext.QuizRangeScore.AddAsync(range);
+
+                range.CreatedBy = new Guid(userId);
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return existQuiz.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> SoftDelete(Guid id)
+    {
+        var data = await GetById(id);
+        if (data == null)
+        {
+            throw new AppException(ErrorMessage.QuizNotExist);
+        }
+
+        data.IsDeleted = true;
+
+        await _dataContext.SaveChangesAsync();
+
+        return data.Id;
+    }
+
+    public async Task<Guid> HardDelete(Guid id)
+    {
+        var data = await GetById(id);
+        if (data == null)
+        {
+            throw new AppException(ErrorMessage.QuizNotExist);
+        }
+
+        _dataContext.Quiz.Remove(data);
+
+        await _dataContext.SaveChangesAsync();
+
+        return data.Id;
+    }
 
     //private method
-    private void SearchByKeyWord(ref IQueryable<Quiz> quiz, string keyword)
-    {
-        if (!quiz.Any() || string.IsNullOrWhiteSpace(keyword))
-            return;
-        quiz = quiz.Where(o => o.Name.ToLower().Contains(keyword.Trim().ToLower()));
-    }
+
+
 }
