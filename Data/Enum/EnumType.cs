@@ -43,8 +43,9 @@
 	{
 		Pending,
 		Approved,
-		Rejected
-	}
+		Rejected,
+        EditedPendingApproval
+    }
 
     public enum MediaType
     {

@@ -29,9 +29,9 @@ public class User : BaseEntities
     public string? Address { get; set; }
     public string AvatarUrl { get; set; } = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
     public string? ForgotPwdToken { get; set; }
+    public DateTime? ForgotPwdTokenExpiration { get; set; }
     public UserRole Role { get; set; } = UserRole.Member;
     public bool? IsModerator { get; set; }
-    public string? GoogleId { get; set; }
 
     // Foreign Keys
     public IList<ModeratorApplication>? RequestRegister { get; set; }

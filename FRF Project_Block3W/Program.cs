@@ -14,6 +14,7 @@ builder.Services.ConfigureJWTToken(
     builder.Configuration.GetSection("JWT").Get<JwtModel>(),
     builder.Configuration.GetSection("Authentication:Google").Get<GoogleModel>()
 );
+builder.Services.Configure<MailSetupModel>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddBusinessServices();
 
 
