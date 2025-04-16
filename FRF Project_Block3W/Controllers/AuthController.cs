@@ -1,71 +1,47 @@
 ﻿using Data.Models;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 using Service.Utilities;
 
 
-namespace InternSystem.Controllers
+namespace FRF_Project_Block3W.Controllers;
+
+[Route("api/auth")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/auth")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly IUserService _userService;
+    private readonly IJwtUtils _jwtUtils;
+
+    public AuthController(IUserService userService, IJwtUtils jwtUtils)
     {
-        private readonly IUserService _userService;
-        private readonly IJwtUtils _jwtUtils;
+        _userService = userService;
+        _jwtUtils = jwtUtils;
+    }
 
-        public AuthController(IUserService userService, IJwtUtils jwtUtils)
+    [AllowAnonymous]
+    [HttpPost("signin")]
+    public async Task<IActionResult> Login(UserRequest model)
+    {
+        if (!ModelState.IsValid)
         {
-            _userService = userService;
-            _jwtUtils = jwtUtils;
+            return BadRequest();
         }
+        var data = await _userService.Login(model);
+        return Ok(data);
+    }
 
-        [HttpGet("login-google")]
-        public IActionResult LoginWithGoogle()
-        {
-            var redirectUrl = Url.Action("GoogleResponse", "Auth");
-            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
-            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
-        }
+    //[AllowAnonymous]
+    //[HttpPost("signin-google")]
+    //public async Task<IActionResult> LoginWithGoogle([FromQuery] GoogleLoginRequest request)
+    //{
+    //    if (!ModelState.IsValid)
+    //    {
+    //        return BadRequest();
+    //    }
+    //    var data = await _userService.LoginWithGoogle(request.GoogleIdToken);
 
-
-        [AllowAnonymous]
-        [HttpPost("signin")]
-        public async Task<IActionResult> Login(UserRequest model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
-            var data = await _userService.Login(model);
-            return Ok(data);
-        }
-
-        [AllowAnonymous]
-        [HttpPost("signin-google")]
-        public async Task<IActionResult> LoginWithGoogle([FromQuery] GoogleLoginRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
-            var data = await _userService.LoginWithGoogle(request.GoogleIdToken);
-
-            return Ok(data);
-        }
-
-        [AllowAnonymous]
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(UserCreateModel model)
-		{
-			if (!ModelState.IsValid)
-			{
-				return BadRequest();
-			}
-			var data = await _userService.Create(model);
-			return Ok(data);
-		}
-	}
+    //    return Ok(data);
+    //}
 }

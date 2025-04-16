@@ -2,17 +2,26 @@
 using Data.Entities;
 using Data.Models;
 
-namespace Service.Mapper
+namespace Service.Mapper;
+
+public class MapperProfiles : Profile
 {
-    public class MapperProfiles : Profile
+    public MapperProfiles()
     {
-        public MapperProfiles()
-        {
-            //User
-            CreateMap<UserCreateModel, User>();
-            CreateMap<User, UserViewModel>();
-            CreateMap<UserUpdateModel, User>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
-        }
+        //User
+        CreateMap<UserCreateModel, User>();
+        CreateMap<User, UserViewModel>();
+        CreateMap<UserUpdateModel, User>()
+            .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+
+        //Quiz
+        CreateMap<QuizCreateModel, Quiz>();
+        CreateMap<Quiz, QuizViewModel>();
+
+        //QuizQuestion
+        CreateMap<QuizQuestionCreateModel, QuizQuestion>();
+
+        //QuizAnswer
+        CreateMap<QuizAnswerCreateModel, QuizAnswer>();
     }
 }

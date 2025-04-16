@@ -1,22 +1,22 @@
 ﻿
 
-namespace Service.Utilities
+namespace Service.Utilities;
+
+public static class ErrorMessage
 {
-    public static class ErrorMessage
-    {
-        //Role
-        public static string RoleExist = "Role already exists.";
+    //User
+    public static string UserExist = "Username or email already exists.";
+    public static string InvalidAccount = "Invalid email or password.";
 
-        //Permission
-        public static string PermissionExist = "Permission already exists.";
+    //Quiz
+    public static string QuizExist = "Quiz existed!";
+    public static string QuizNotExist = "Quiz not found!";
+    public static string QuizTypeOnlyMulChoice = "Only multiple choice questions are allowed in a quiz-type quiz.";
+    public static string MulChoiceMustHaveAnswer = "Multiple choice questions must have at least one answer.";
+    
 
-        //User
-        public static string UserExist = "Username or email already exists.";
-        public static string InvalidAccount = "Invalid email or password.";
-
-        //Others
-        public static string IdNotExist = "ID does not exist.";
-        public static string AccessTokenFail = "Access token failed!";
-    }
-
+    //Others
+    public static string IdNotExist = "ID does not exist.";
+    public static string AccessTokenFail = "Access token failed!";
+    public static string Unauthorize = "User is not authorized.";
 }
