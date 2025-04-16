@@ -16,6 +16,32 @@ public class UserController : ControllerBase
         _userService = userService;
     }
 
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromForm] RegisterUserModel model)
+    {
+        var result = await _userService.RegisterAsync(model);
+        return Ok(result);
+    }
+
+    [HttpPost("register-moderator")]
+    public async Task<IActionResult> RegisterModerator()
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _userService.RegisterModeratorAsync(userId);
+        return Ok(result);
+    }
+
+    [HttpPut("approve-moderator/{requesterId}")]
+    public async Task<IActionResult> ProcessModeratorApplicationAsync(Guid requesterId, ModeratorApplicationApproveModel model)
+    {
+        var confirmedId = User.Claims.GetUserIdFromJwtToken();
+
+        await _userService.ProcessModeratorApplicationAsync(confirmedId, requesterId, model);
+        return Ok("Approved");
+    }
+
+
     [HttpPost("request-password-reset")]
     public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestModel model)
     {

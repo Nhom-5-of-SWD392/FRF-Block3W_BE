@@ -24,7 +24,7 @@ public class QuizController : ControllerBase
         return Ok(data);
     }
 
-    [HttpGet("id")]
+    [HttpGet("{id}/quiz-details")]
     public async Task<IActionResult> GetQuizDetailAsync(Guid id)
     {
         var data = await _quizService.GetQuizDetailAsync(id);
@@ -47,5 +47,36 @@ public class QuizController : ControllerBase
         return Ok(data);
     }
 
-    
+    [HttpPost("{id}/quiz-range-scores")]
+    public async Task<IActionResult> AddQuizRangeScore(Guid id, List<QuizRangeScoreCreateModel> models)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest();
+        }
+
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var data = await _quizService.AddQuizRangeScore(userId, id, models);
+
+        return Ok(data);
+    }
+
+    [HttpPatch("{id}")]
+    public async Task<IActionResult> SoftDelete(Guid id)
+    {
+        var data = await _quizService.SoftDelete(id);
+
+        return Ok(data);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> HardDelete(Guid id)
+    {
+        var data = await _quizService.HardDelete(id);
+
+        return Ok(data);
+    }
+
+
 }
