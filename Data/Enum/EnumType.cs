@@ -10,4 +10,18 @@
         Female,
         Others
     }
+
+    public enum ApplicationStatus
+	{
+		Pending,
+		Approved,
+		Rejected
+	}
+
+    public enum PostStatus
+	{
+		Pending,
+		Approved,
+		Rejected
+	}
 }
