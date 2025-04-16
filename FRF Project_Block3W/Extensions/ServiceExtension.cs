@@ -42,6 +42,11 @@ public static class ServiceExtension
         //User
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISortHelpers<User>, SortHelper<User>>();
+        services.AddScoped<IFilterHelper<User>, FilterHelper<User>>();
+
+        //ModeratorApplication
+        services.AddScoped<ISortHelpers<ModeratorApplication>, SortHelper<ModeratorApplication>>();
+        services.AddScoped<IFilterHelper<ModeratorApplication>, FilterHelper<ModeratorApplication>>();
 
         //Quiz
         services.AddScoped<IQuizService, QuizService>();

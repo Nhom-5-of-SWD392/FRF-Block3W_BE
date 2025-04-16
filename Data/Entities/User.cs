@@ -31,7 +31,7 @@ public class User : BaseEntities
     public string? ForgotPwdToken { get; set; }
     public DateTime? ForgotPwdTokenExpiration { get; set; }
     public UserRole Role { get; set; } = UserRole.Member;
-    public bool? IsModerator { get; set; }
+    public bool IsModerator { get; set; } = false;
 
     // Foreign Keys
     public IList<ModeratorApplication>? RequestRegister { get; set; }

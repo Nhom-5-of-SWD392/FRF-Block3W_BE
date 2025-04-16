@@ -6,15 +6,12 @@ using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using Service.Utilities;
 using System.Data;
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Service.Core;
 
@@ -24,8 +21,7 @@ public interface IUserService
     //Task<JWTToken> LoginWithGoogle(string idToken);
     Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
     Task<User> GetById(Guid id);
-    Task<Guid> Create(UserCreateModel model);
-    Task<Guid> Update(Guid id, UserUpdateModel model);
+    Task<Guid> UpdatePersonalInformation(string userId, UserUpdateModel model);
     Task<Guid> Delete(Guid id);
     Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
     Task<string> RequestPasswordResetAsync(PasswordResetRequestModel model);
@@ -33,11 +29,16 @@ public interface IUserService
     Task<Guid> RegisterAsync(RegisterUserModel model);
     Task<Guid> RegisterModeratorAsync(string userId);
     Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model);
+    Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(RequestQueryModel query);
+    Task<string> UpdateAvatarImage(string userId, IFormFile file);
 }
 public class UserService : IUserService
 {
     private readonly DataContext _dataContext;
-    private ISortHelpers<User> _sortHelper;
+    private ISortHelpers<User> _sortUserHelper;
+    private ISortHelpers<ModeratorApplication> _sortRequestHelper;
+    private IFilterHelper<User> _filterUserHelper;
+    private IFilterHelper<ModeratorApplication> _filterRequestHelper;
     private readonly IMapper _mapper;
     private readonly IJwtUtils _jwtUtils;
     private readonly IConfiguration _configuration;
@@ -49,7 +50,10 @@ public class UserService : IUserService
 
     public UserService(
             DataContext dataContext, 
-            ISortHelpers<User> sortHelper, 
+            ISortHelpers<User> sortUserHelper, 
+            ISortHelpers<ModeratorApplication> sortRequestHelper,
+            IFilterHelper<User> filterUserHelper,
+            IFilterHelper<ModeratorApplication> filterRequestHelper,
             IMapper mapper, 
             IConfiguration configuration, 
             IJwtUtils jwtUtils, 
@@ -58,7 +62,10 @@ public class UserService : IUserService
             ICloudinaryService cloudinaryService)
     {
         _dataContext = dataContext;
-        _sortHelper = sortHelper;
+        _sortUserHelper = sortUserHelper;
+        _sortRequestHelper = sortRequestHelper;
+        _filterUserHelper = filterUserHelper;
+        _filterRequestHelper = filterRequestHelper;
         _mapper = mapper;
         _configuration = configuration;
         _jwtUtils = jwtUtils;
@@ -157,6 +164,57 @@ public class UserService : IUserService
     //        throw new AppException(e.Message);
     //    }
     //}
+
+    public async Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
+    {
+        try
+        {
+            var queryUser = _dataContext.User
+                .Where(u => !u.IsDeleted);
+
+            queryUser = queryUser.SearchByKeyword(r => r.FirstName + " " + r.LastName, query.Search);
+
+            var filters = new Dictionary<string, string>();
+
+            //if (query.Status.HasValue)
+            //{
+            //    filters.Add("Status", query.Status.ToString());
+            //}
+
+            //queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+
+            var sortedData = _sortUserHelper.ApplySort(queryUser, query.OrderBy!);
+
+            var pagedData = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var userViewModel = pagedData.Select(user => new UserViewModel
+            {
+                Id = user.Id,
+                FullName = user.FirstName + " " + user.LastName,
+                UserName = user.UserName,
+                Email = user.Email,
+                Avatar = user.AvatarUrl,
+                IsModerator = user.IsModerator,
+                UpdatedAt = user.UpdatedAt, 
+                UpdatedBy = user.UpdatedBy,
+            }).ToList();
+
+            return new PagingModel<UserViewModel>
+            {
+                PageIndex = pagedData.CurrentPage,
+                PageSize = pagedData.PageSize,
+                TotalCount = pagedData.TotalCount,
+                TotalPages = pagedData.TotalPages,
+                pagingData = userViewModel
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
     public async Task<User> GetById(Guid id)
     {
         try
@@ -177,21 +235,26 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<Guid> Update(Guid id, UserUpdateModel model)
+    public async Task<Guid> UpdatePersonalInformation(string userId, UserUpdateModel model)
     {
         try
         {
-            var data = await GetById(id);
-            if (data == null)
+            if (string.IsNullOrEmpty(userId))
             {
-                throw new AppException(ErrorMessage.IdNotExist);
+                throw new AppException(ErrorMessage.Unauthorize);
             }
-            var updateData = _mapper.Map(model, data);
+
+            var user = await GetById(new Guid(userId));
+
+            var updateData = _mapper.Map(model, user);
+
+            updateData.UpdatedBy = new Guid(userId);
 
             _dataContext.User.Update(updateData);
 
             await _dataContext.SaveChangesAsync();
-            return data.Id;
+
+            return user.Id;
         }
         catch (Exception e)
         {
@@ -326,102 +389,219 @@ public class UserService : IUserService
 
     public async Task<Guid> RegisterAsync(RegisterUserModel model)
     {
-        if (model.Password != model.ConfirmPassword)
-            throw new AppException("Passwords do not match.");
-
-        var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName);
-        if (existingUser != null)
-            throw new AppException("Email or username already exists.");
-
-        string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
-
-        string path = model.UserName + "/Avatar";
-
-        if (model.AvatarUrl != null)
+        try
         {
-            avatarUrl = await _cloudinaryService.UploadImageAsync(model.AvatarUrl, path);
+            if (model.Password != model.ConfirmPassword)
+                throw new AppException("Passwords do not match.");
+
+            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName);
+            if (existingUser != null)
+                throw new AppException("Email or username already exists.");
+
+            if (!IsValid(model.Password))
+                throw new AppException(
+                    "Password does not meet the required complexity standards: " +
+                    "-At least 8 characters long " +
+                    "-Include UPPERCASE and lowercase letters " +
+                    "-At least one digit " +
+                    "-At least one special character @#$%^&*!_"
+                );
+
+            string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
+
+            string path = model.UserName + "/Avatar";
+
+            if (model.AvatarUrl != null)
+            {
+                avatarUrl = await _cloudinaryService.UploadImageAsync(model.AvatarUrl, path);
+            }
+
+            var user = new User
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                UserName = model.UserName,
+                Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
+                Dob = DateTime.SpecifyKind(model.Dob, DateTimeKind.Utc),
+                Gender = model.Gender,
+                Bio = model.Bio,
+                Address = model.Address,
+                AvatarUrl = avatarUrl,
+                Role = UserRole.Member
+            };
+
+            await _dataContext.User.AddAsync(user);
+            await _dataContext.SaveChangesAsync();
+
+            return user.Id;
         }
-
-        var user = new User
+        catch (Exception e)
         {
-            FirstName = model.FirstName,
-            LastName = model.LastName,
-            Email = model.Email,
-            Phone = model.Phone,
-            UserName = model.UserName,
-            Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
-            Dob = DateTime.SpecifyKind(model.Dob, DateTimeKind.Utc),
-            Gender = model.Gender,
-            Bio = model.Bio,
-            Address = model.Address,
-            AvatarUrl = avatarUrl,
-            Role = UserRole.Member
-        };
-
-        await _dataContext.User.AddAsync(user);
-        await _dataContext.SaveChangesAsync();
-
-        return user.Id;
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
     }
 
     public async Task<Guid> RegisterModeratorAsync(string userId)
     {
-        if (string.IsNullOrEmpty(userId))
+        try
         {
-            throw new AppException(ErrorMessage.Unauthorize);
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var existing = await _dataContext.ModeratorApplication
+                .FirstOrDefaultAsync(x => x.RegisterById == new Guid(userId) && x.Status == ApplicationStatus.Pending);
+
+            if (existing != null)
+                throw new AppException(ErrorMessage.AlreadyApplyModerator);
+
+            var application = new ModeratorApplication
+            {
+                RegisterById = new Guid(userId),
+                Status = ApplicationStatus.Pending
+            };
+
+            await _dataContext.ModeratorApplication.AddAsync(application);
+
+            await _dataContext.SaveChangesAsync();
+
+            return application.Id;
         }
-
-        var existing = await _dataContext.ModeratorApplication
-            .FirstOrDefaultAsync(x => x.RegisterById == new Guid(userId) && x.Status == ApplicationStatus.Pending);
-
-        if (existing != null) 
-            throw new AppException(ErrorMessage.AlreadyApplyModerator);
-
-        var application = new ModeratorApplication
+        catch (Exception e)
         {
-            RegisterById = new Guid(userId),
-            Status = ApplicationStatus.Pending
-        };
-
-        await _dataContext.ModeratorApplication.AddAsync(application);
-
-        await _dataContext.SaveChangesAsync();
-
-        return application.Id;
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
     }
 
     public async Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model)
     {
-        if (string.IsNullOrEmpty(confirmedId))
+        try
         {
-            throw new AppException(ErrorMessage.Unauthorize);
+            if (string.IsNullOrEmpty(confirmedId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var request = await _dataContext.ModeratorApplication
+                .Include(x => x.Registrant)
+                .FirstOrDefaultAsync(x => x.Id == requestId);
+
+            if (request == null) throw new AppException(ErrorMessage.RequestNotFound);
+
+            if (request.Status != ApplicationStatus.Pending)
+                throw new AppException(ErrorMessage.RequestAlreadyProcessed);
+
+            request.ConfirmedById = new Guid(confirmedId);
+            request.UpdatedBy = new Guid(confirmedId);
+            request.Status = model.IsApproved ? ApplicationStatus.Approved : ApplicationStatus.Rejected;
+
+            if (model.IsApproved)
+            {
+                var user = request.Registrant!;
+                user.IsModerator = true;
+            }
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Approved!";
         }
-
-        var request = await _dataContext.ModeratorApplication
-            .Include(x => x.Registrant)
-            .FirstOrDefaultAsync(x => x.Id == requestId);
-
-        if (request == null) throw new AppException(ErrorMessage.RequestNotFound);
-
-        if (request.Status != ApplicationStatus.Pending)
-            throw new AppException(ErrorMessage.RequestAlreadyProcessed);
-
-        request.ConfirmedById = new Guid(confirmedId);
-        request.UpdatedBy = new Guid(confirmedId);
-        request.Status = model.IsApproved ? ApplicationStatus.Approved : ApplicationStatus.Rejected;
-
-        if (model.IsApproved)
+        catch (Exception e)
         {
-            var user = request.Registrant!;
-            user.IsModerator = true;
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
         }
+    }
 
-        await _dataContext.SaveChangesAsync();
+    public async Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(RequestQueryModel query)
+    {
+        try
+        {
+            var queryRequest = _dataContext.ModeratorApplication
+                .Include(m => m.Registrant)
+                .Include(m => m.Confirmer)
+                .Where(m => !m.IsDeleted);
 
-        return "Approved!";
+            queryRequest = queryRequest.SearchByKeyword(r => r.Registrant.FirstName + " " + r.Registrant.LastName, query.Search);
+
+            var filters = new Dictionary<string, string>();
+
+            if (query.Status.HasValue)
+            {
+                filters.Add("Status", query.Status.ToString());
+            }
+
+            queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+
+            var sortedData = _sortRequestHelper.ApplySort(queryRequest, query.OrderBy!);
+
+            var pagedData = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var requestViewModels = pagedData.Select(reqs => new RequestViewModel
+            {
+                Id = reqs.Id,
+                Status = reqs.Status,
+                Reason = reqs.Reason,
+                RegisterById = reqs.RegisterById,
+                RegistrantName = reqs.Registrant != null ? reqs.Registrant.FirstName + " " + reqs.Registrant.LastName : null,
+                RegistrantEmail = reqs.Registrant?.Email,
+                ConfirmedById = reqs.ConfirmedById,
+                ConfirmerName = reqs.Confirmer != null ? reqs.Confirmer.FirstName + " " + reqs.Confirmer.LastName : null,
+                CreatedAt = reqs.CreatedAt
+            }).ToList();
+
+            return new PagingModel<RequestViewModel>
+            {
+                PageIndex = pagedData.CurrentPage,
+                PageSize = pagedData.PageSize,
+                TotalCount = pagedData.TotalCount,
+                TotalPages = pagedData.TotalPages,
+                pagingData = requestViewModels
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<string> UpdateAvatarImage(string userId, IFormFile file)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var user = await GetById(new Guid(userId));
+
+            string path = user.UserName + "/Avatar";
+
+            user.AvatarUrl = await _cloudinaryService.UploadImageAsync(file, path);
+            user.UpdatedBy = new Guid(userId);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _dataContext.Update(user);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Image upload successfully!";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
     }
 
 
+    //private method
     public bool IsValid(string password)
     {
         if (password.Length < 8) return false;
@@ -435,15 +615,5 @@ public class UserService : IUserService
         if (!Regex.IsMatch(password, @"[@#$%^&*!_]")) return false;
 
         return true;
-    }
-
-    public Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<Guid> Create(UserCreateModel model)
-    {
-        throw new NotImplementedException();
     }
 }
