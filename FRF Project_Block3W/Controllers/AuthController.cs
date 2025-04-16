@@ -55,5 +55,17 @@ namespace InternSystem.Controllers
 
             return Ok(data);
         }
-    }
+
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(UserCreateModel model)
+		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest();
+			}
+			var data = await _userService.Create(model);
+			return Ok(data);
+		}
+	}
 }
