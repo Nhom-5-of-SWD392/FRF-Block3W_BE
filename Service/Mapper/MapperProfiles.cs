@@ -23,5 +23,11 @@ public class MapperProfiles : Profile
 
         //QuizAnswer
         CreateMap<QuizAnswerCreateModel, QuizAnswer>();
-    }
+
+        //Topic
+        CreateMap<TopicCreateModel, Topic>();
+        CreateMap<Topic, TopicViewModel>();
+		CreateMap<TopicUpdateModel, Topic>()
+			.ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+	}
 }

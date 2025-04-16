@@ -2,7 +2,9 @@ using Data.Models;
 using FRF_Project_Block3W.Extensions;
 using FRF_Project_Block3W.Helpers;
 using Microsoft.OpenApi.Models;
+using Service.Core;
 using Service.Mapper;
+using Service.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,7 @@ builder.Services.ConfigureJWTToken(
 );
 builder.Services.Configure<MailSetupModel>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddBusinessServices();
+
 
 
 builder.Services.AddControllers(op =>
