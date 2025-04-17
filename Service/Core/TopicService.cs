@@ -44,7 +44,7 @@ public class TopicService : ITopicService
 			}
 
 		var data = _mapper.Map<TopicCreateModel, Topic>(model);
-			data.CreatedBy = new Guid(userId);
+		data.CreatedBy = new Guid(userId);
 		_dataContext.Topic.Add(data);
 		await _dataContext.SaveChangesAsync();
 		
@@ -84,6 +84,7 @@ public class TopicService : ITopicService
 		{
 			var queryTopic = _dataContext.Topic
 				.Where(x => !x.IsDeleted);
+
 			SearchByKeyWord(ref queryTopic, query.Search);
 
 			var sortedData = _sortHelpers.ApplySort(queryTopic, query.OrderBy!);

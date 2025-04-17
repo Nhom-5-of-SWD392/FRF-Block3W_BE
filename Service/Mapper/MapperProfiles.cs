@@ -29,5 +29,10 @@ public class MapperProfiles : Profile
         CreateMap<Topic, TopicViewModel>();
 		CreateMap<TopicUpdateModel, Topic>()
 			.ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+
+		//Post
+		CreateMap<PostCreateModel, Post>();
+		CreateMap<Post, PostViewModel>();
+		
 	}
 }
