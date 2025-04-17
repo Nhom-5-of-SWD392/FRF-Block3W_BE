@@ -3,6 +3,7 @@ using System;
 using Data.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250417051300_update-quiz-result-table")]
+    partial class updatequizresulttable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -474,16 +477,13 @@ namespace Data.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EssayAnswerText")
-                        .HasColumnType("text");
-
                     b.Property<double>("EvaluationScore")
                         .HasColumnType("double precision");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("QuizAnswerId")
+                    b.Property<Guid>("QuizAnswerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("QuizId")
@@ -613,9 +613,6 @@ namespace Data.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("QuizId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("QuizMadeById")
                         .HasColumnType("uuid");
 
@@ -634,8 +631,6 @@ namespace Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EvaluateById");
-
-                    b.HasIndex("QuizId");
 
                     b.HasIndex("QuizMadeById");
 
@@ -952,7 +947,9 @@ namespace Data.Migrations
                 {
                     b.HasOne("Data.Entities.QuizAnswer", "QuizAnswer")
                         .WithMany("QuizDetails")
-                        .HasForeignKey("QuizAnswerId");
+                        .HasForeignKey("QuizAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Data.Entities.Quiz", "Quiz")
                         .WithMany("QuizDetails")
@@ -1010,12 +1007,6 @@ namespace Data.Migrations
                         .HasForeignKey("EvaluateById")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Data.Entities.Quiz", "Quiz")
-                        .WithMany("QuizResults")
-                        .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Data.Entities.User", "User")
                         .WithMany("QuizMade")
                         .HasForeignKey("QuizMadeById")
@@ -1023,8 +1014,6 @@ namespace Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Evaluator");
-
-                    b.Navigation("Quiz");
 
                     b.Navigation("User");
                 });
@@ -1075,8 +1064,6 @@ namespace Data.Migrations
                     b.Navigation("QuizQuestions");
 
                     b.Navigation("QuizRangeScores");
-
-                    b.Navigation("QuizResults");
                 });
 
             modelBuilder.Entity("Data.Entities.QuizAnswer", b =>

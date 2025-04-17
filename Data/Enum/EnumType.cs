@@ -36,7 +36,14 @@
         Good,
         Average,
         Poor,
-        Bad
+        Bad,
+        None
+    }
+
+    public enum QuizResultStatus
+    {
+        Pending,
+        Completed
     }
 
     public enum PostStatus

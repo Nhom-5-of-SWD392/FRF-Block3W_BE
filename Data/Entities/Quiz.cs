@@ -15,4 +15,5 @@ public class Quiz : BaseEntities
     public IList<QuizAnswer>? QuizAnswers { get; set; }
     public IList<QuizQuestion>? QuizQuestions { get; set; }
     public IList<QuizDetail>? QuizDetails { get; set; }
+    public IList<QuizResult>? QuizResults { get; set; }
 }

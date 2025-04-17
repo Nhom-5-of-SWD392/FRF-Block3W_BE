@@ -17,6 +17,7 @@ public static class ErrorMessage
     public static string QuizNotExist = "Quiz not found!";
     public static string QuizTypeOnlyMulChoice = "Only multiple choice questions are allowed in a quiz-type quiz.";
     public static string MulChoiceMustHaveAnswer = "Multiple choice questions must have at least one answer.";
+    public static string QuizResultNotFound = "Quiz result not found";
 
     //QuizRangeScore
     public static string MinCantGreaterMax = "Min Score cannot be greater than Max Score.";

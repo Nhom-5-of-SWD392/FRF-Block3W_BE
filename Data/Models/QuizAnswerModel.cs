@@ -1,9 +1,6 @@
-﻿using Data.Entities;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿namespace Data.Models;
 
-namespace Data.Models;
-
-public class QuizAnswerCreateModel
+public class QuizAnswerModel
 {
     public string? AnswerText { get; set; }
     public int Score { get; set; } = 0;
