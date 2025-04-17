@@ -138,7 +138,6 @@ public class QuizService : IQuizService
                     var quizQuestionData = _mapper.Map<QuizQuestionCreateModel, QuizQuestion>(newQuestion);
                     await _dataContext.QuizQuestion.AddAsync(quizQuestionData);
 
-                    // Nếu không phải Essay thì phải có đáp án
                     if (quizQuestionData.Type == QuestionType.MultipleChoice)
                     {
                         if (questionModel.Answers == null || !questionModel.Answers.Any())
@@ -155,6 +154,22 @@ public class QuizService : IQuizService
                             };
                             var quizAnswerData = _mapper.Map<QuizAnswerModel, QuizAnswer>(newAnswer);
                             await _dataContext.QuizAnswer.AddAsync(quizAnswerData);
+                        }
+                    }
+                    else if (quizQuestionData.Type == QuestionType.Essay)
+                    {
+                        foreach (var answerModel in questionModel.Answers)
+                        {
+                            var newEssayAnswer = new QuizAnswerModel
+                            {
+                                AnswerText = "",
+                                Score = answerModel.Score,
+                                QuizQuestionId = quizQuestionData.Id,
+                                QuizId = quizData.Id
+                            };
+                            var quizEssayAnswerData = _mapper.Map<QuizAnswerModel, QuizAnswer>(newEssayAnswer);
+
+                            await _dataContext.QuizAnswer.AddAsync(quizEssayAnswerData);
                         }
                     }
                 }
@@ -388,12 +403,13 @@ public class QuizService : IQuizService
         try
         {
             var result = await _dataContext.QuizResult
-            .Include(r => r.Quiz)
-            .Include(r => r.QuizDetails)!
-                .ThenInclude(d => d.QuizQuestion)
-            .Include(r => r.QuizDetails)!
-                .ThenInclude(d => d.QuizAnswer)
-            .FirstOrDefaultAsync(r => r.Id == quizResultId);
+                .Include(r => r.Quiz)
+                .Include(r => r.QuizDetails)!
+                    .ThenInclude(d => d.QuizQuestion)
+                        .ThenInclude(q => q.QuizAnswers)
+                .Include(r => r.QuizDetails)!
+                    .ThenInclude(d => d.QuizAnswer)
+                .FirstOrDefaultAsync(r => r.Id == quizResultId);
 
             if (result == null)
                 throw new AppException(ErrorMessage.QuizResultNotFound);
@@ -410,17 +426,33 @@ public class QuizService : IQuizService
                 FinalScore = result.FinalScore,
                 Result = result.Result,
                 Status = result.Status,
-                Details = result.QuizDetails!.Select(d => new QuizResultDetail
+                Details = result.QuizDetails!.Select(d =>
                 {
-                    Question = new QuestionModel
+                    var questionType = d.QuizQuestion?.Type ?? QuestionType.MultipleChoice;
+                    int maxScore = 0;
+
+                    if (questionType == QuestionType.MultipleChoice)
                     {
-                        Id = d.QuizQuestion?.Id ?? Guid.Empty,
-                        QuestionText = d.QuizQuestion?.QuestionText ?? "",
-                        QuestionType = d.QuizQuestion?.Type ?? QuestionType.MultipleChoice
-                    },
-                    SelectedAnswerText = d.QuizAnswer?.AnswerText,
-                    EssayAnswerText = d.EssayAnswerText,
-                    EvaluationScore = d.EvaluationScore
+                        maxScore = d.QuizAnswer?.Score ?? 0;
+                    }
+                    else if (questionType == QuestionType.Essay)
+                    {
+                        maxScore = d.QuizQuestion?.QuizAnswers?.FirstOrDefault()?.Score ?? 0;
+                    }
+
+                    return new QuizResultDetail
+                    {
+                        Question = new QuestionModel
+                        {
+                            Id = d.QuizQuestion?.Id ?? Guid.Empty,
+                            QuestionText = d.QuizQuestion?.QuestionText ?? "",
+                            QuestionType = questionType
+                        },
+                        MaxScoreForAnswer = maxScore,
+                        SelectedAnswerText = d.QuizAnswer?.AnswerText,
+                        EssayAnswerText = d.EssayAnswerText,
+                        EvaluationScore = d.EvaluationScore
+                    };
                 }).ToList()
             };
 
@@ -503,7 +535,9 @@ public class QuizService : IQuizService
             var evaluatorGuid = new Guid(evaluatorId);
 
             var result = await _dataContext.QuizResult
-                .Include(r => r.QuizDetails)
+                .Include(r => r.QuizDetails!)
+                    .ThenInclude(q => q.QuizQuestion)
+                        .ThenInclude(q => q.QuizAnswers)
                 .Include(r => r.Quiz)
                     .ThenInclude(q => q.QuizRangeScores)
                 .FirstOrDefaultAsync(r => r.Id == model.QuizResultId);
@@ -514,10 +548,26 @@ public class QuizService : IQuizService
             double finalScore = 0;
             foreach (var detail in result.QuizDetails!)
             {
-                if (detail.QuizQuestion?.Type == QuestionType.Essay 
-                    && model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
+                var question = detail.QuizQuestion;
+
+                if (question != null && question.Type == QuestionType.Essay)
                 {
+                    if (!model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
+                    {
+                        throw new AppException(ErrorMessage.QuestionNotFound);
+                    }
+
+                    var maxScore = await _dataContext.QuizAnswer
+                        .Where(a => a.QuizQuestionId == detail.QuizQuestionId)
+                        .MaxAsync(a => (double?)a.Score) ?? 0;
+
+                    if (score > maxScore)
+                    {
+                        throw new AppException($"Score cannot exceed the maximum value of {maxScore} for this question");
+                    }
+
                     detail.EvaluationScore = score;
+
                     finalScore += score;
                 }
             }

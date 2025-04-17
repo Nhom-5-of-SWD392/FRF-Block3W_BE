@@ -20,6 +20,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] UserQueryModel model)
     {
         var result = await _userService.GetAll(model);
+
         return Ok(result);
     }
 
@@ -27,6 +28,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _userService.GetById(id);
+
         return Ok(result);
     }
 
@@ -63,7 +65,13 @@ public class UserController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromForm] RegisterUserModel model)
     {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest();
+        }
+
         var result = await _userService.RegisterAsync(model);
+
         return Ok(result);
     }
 
@@ -73,6 +81,7 @@ public class UserController : ControllerBase
         var userId = User.Claims.GetUserIdFromJwtToken();
 
         var result = await _userService.RegisterModeratorAsync(userId);
+
         return Ok(result);
     }
 
@@ -80,6 +89,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> RequestPasswordReset([FromBody] PasswordResetRequestModel model)
     {
         var resetLink = await _userService.RequestPasswordResetAsync(model);
+
         return Ok(new { Message = "Reset password email sent.", ResetLink = resetLink });
     }
 
@@ -87,6 +97,7 @@ public class UserController : ControllerBase
     public async Task<IActionResult> ResetPassword([FromBody] PasswordResetModel model)
     {
         var result = await _userService.ResetPasswordAsync(model);
+
         return Ok(result);
     }
 
@@ -96,6 +107,7 @@ public class UserController : ControllerBase
         var userId = User.Claims.GetUserIdFromJwtToken();
 
         var result = await _userService.ChangePasswordAsync(userId, model);
+
         return Ok(result);
     }
 }

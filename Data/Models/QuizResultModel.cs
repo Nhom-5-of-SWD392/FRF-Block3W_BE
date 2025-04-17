@@ -22,6 +22,7 @@ public class QuizResultView : BaseModel
 public class QuizResultDetail
 {
     public QuestionModel Question { get; set; } = new ();
+    public int MaxScoreForAnswer { get; set; }
     public string? SelectedAnswerText { get; set; }
     public string? EssayAnswerText { get; set; }
     public double EvaluationScore { get; set; }

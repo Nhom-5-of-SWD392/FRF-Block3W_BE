@@ -19,6 +19,10 @@ public static class ErrorMessage
     public static string MulChoiceMustHaveAnswer = "Multiple choice questions must have at least one answer.";
     public static string QuizResultNotFound = "Quiz result not found";
     public static string QuizResultNotFoundOrEvaluated = ("Result not found or already evaluated");
+    public static string OnlyEssayCanGrade = "Only essay questions are graded.";
+
+    //Question
+    public static string QuestionNotFound = "Question not found.";
 
     //QuizRangeScore
     public static string MinCantGreaterMax = "Min Score cannot be greater than Max Score.";

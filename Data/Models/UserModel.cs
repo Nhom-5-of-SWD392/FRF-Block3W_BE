@@ -97,10 +97,17 @@ public class PasswordResetModel
 
 public class RegisterUserModel
 {
+    [Required(ErrorMessage = "Name is required")]
+    [RegularExpression("^[a-zA-Z\\s]+$", ErrorMessage = "Only letters are allowed")]
     public string FirstName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Name is required")]
+    [RegularExpression("^[a-zA-Z\\s]+$", ErrorMessage = "Only letters are allowed")]
     public string LastName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email format")]
     public string Email { get; set; } = string.Empty;
-    public string? Phone { get; set; }
+    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Phone number must start with 0 and have 10 digits")]
+    public string Phone { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string ConfirmPassword { get; set; } = string.Empty;
