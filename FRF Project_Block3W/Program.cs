@@ -1,3 +1,4 @@
+using Data.EFCore;
 using Data.Models;
 using FRF_Project_Block3W.Extensions;
 using FRF_Project_Block3W.Helpers;
@@ -76,6 +77,8 @@ app.UseMiddleware<ErrorHandlerMiddleware>();
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+//app.SeedData();
 
 app.MapControllers();
 

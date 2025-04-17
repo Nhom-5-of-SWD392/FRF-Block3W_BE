@@ -409,13 +409,6 @@ public class UserService : IUserService
 
             string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
 
-            string path = model.UserName + "/Avatar";
-
-            if (model.AvatarUrl != null)
-            {
-                avatarUrl = await _cloudinaryService.UploadImageAsync(model.AvatarUrl, path);
-            }
-
             var user = new User
             {
                 FirstName = model.FirstName,
@@ -426,13 +419,12 @@ public class UserService : IUserService
                 Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
                 Dob = DateTime.SpecifyKind(model.Dob, DateTimeKind.Utc),
                 Gender = model.Gender,
-                Bio = model.Bio,
-                Address = model.Address,
                 AvatarUrl = avatarUrl,
                 Role = UserRole.Member
             };
 
             await _dataContext.User.AddAsync(user);
+
             await _dataContext.SaveChangesAsync();
 
             return user.Id;

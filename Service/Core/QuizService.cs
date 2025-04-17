@@ -21,6 +21,7 @@ public interface IQuizService
     Task<string> SubmitQuizAsync(string userId, SubmitQuizRequest request);
     Task<QuizResultView> GetQuizResultAsync(Guid quizResultId);
     Task<PagingModel<QuizResultView>> GetAllMyQuizResultsAsync(string userId, QuizResultQueryModel query, string role);
+    Task<string> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model);
 
 }
 
@@ -486,7 +487,54 @@ public class QuizService : IQuizService
         catch (Exception ex)
         {
             Console.WriteLine(ex);
-            throw new AppException("Failed to fetch quiz results: " + ex.Message);
+            throw new AppException(ex.Message);
+        }
+    }
+
+    public async Task<string> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(evaluatorId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var evaluatorGuid = new Guid(evaluatorId);
+
+            var result = await _dataContext.QuizResult
+                .Include(r => r.QuizDetails)
+                .Include(r => r.Quiz)
+                    .ThenInclude(q => q.QuizRangeScores)
+                .FirstOrDefaultAsync(r => r.Id == model.QuizResultId);
+
+            if (result == null || result.Status != QuizResultStatus.Pending)
+                throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
+
+            double finalScore = 0;
+            foreach (var detail in result.QuizDetails!)
+            {
+                if (detail.QuizQuestion?.Type == QuestionType.Essay 
+                    && model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
+                {
+                    detail.EvaluationScore = score;
+                    finalScore += score;
+                }
+            }
+
+            result.FinalScore = finalScore;
+            result.EvaluateById = evaluatorGuid;
+            result.Status = QuizResultStatus.Completed;
+            result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Save evaluate successfully!";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            throw new AppException(ex.Message);
         }
     }
 

@@ -41,6 +41,13 @@ public class QuizzModel
     public QuizType Type { get; set; }
 }
 
+public class EvaluateEssayRequest
+{
+    public Guid QuizResultId { get; set; }
+    public Dictionary<Guid, double> EssayScores { get; set; } = new();
+}
+
+
 
 
 

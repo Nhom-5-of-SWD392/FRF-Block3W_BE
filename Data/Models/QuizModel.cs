@@ -97,5 +97,16 @@ public class SubmitAnswerItem
     public string? EssayAnswer { get; set; }
 }
 
+public class EvaluateQuizRequest
+{
+    public Guid QuizResultId { get; set; }
 
+    public List<QuizResultDetails> Answers { get; set; } = new();
+}
+
+public class QuizResultDetails
+{
+    public Guid? AnswerId { get; set; }
+    public double EvaluationScore { get; set; }
+}
 

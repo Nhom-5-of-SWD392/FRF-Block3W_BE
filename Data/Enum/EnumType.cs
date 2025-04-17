@@ -68,11 +68,9 @@
 
     public enum ReactionType
     {
-        Haha,
         Love,
         Happy,
         Sad,
-        Good,
         Bad,
         Like
     }
