@@ -45,8 +45,9 @@ public class PostService : IPostService
 
 				// Create Post object first
 				var postData = _mapper.Map<PostCreateModel, Post>(model);
+				postData.ComfirmById = new Guid(userId); 
 				postData.CreatedBy = new Guid(userId);
-
+				postData.PostById= postData.CreatedBy;
 				await _dataContext.Post.AddAsync(postData);
 
 
