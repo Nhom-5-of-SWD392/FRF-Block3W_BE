@@ -1,7 +1,7 @@
-﻿using Data.Models;
-using FRF_Project_Block3W.Claims;
+﻿using FRF_Project_Block3W.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
+using Data.Models;
 
 namespace FRF_Project_Block3W.Controllers;
 
@@ -19,17 +19,17 @@ public class QuizController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] QuizQueryModel query)
     {
-        var data = await _quizService.GetAll(query);
+        var result = await _quizService.GetAll(query);
 
-        return Ok(data);
+        return Ok(result);
     }
 
     [HttpGet("{id}/quiz-details")]
     public async Task<IActionResult> GetQuizDetailAsync(Guid id)
     {
-        var data = await _quizService.GetQuizDetailAsync(id);
+        var result = await _quizService.GetQuizDetailAsync(id);
 
-        return Ok(data);
+        return Ok(result);
     }
 
     [HttpPost]
@@ -42,9 +42,9 @@ public class QuizController : ControllerBase
 
         var userId = User.Claims.GetUserIdFromJwtToken();
 
-        var data = await _quizService.CreateFullQuizAsync(userId, model);
+        var result = await _quizService.CreateFullQuizAsync(userId, model);
 
-        return Ok(data);
+        return Ok(result);
     }
 
     [HttpPost("{id}/quiz-range-scores")]
@@ -57,26 +57,39 @@ public class QuizController : ControllerBase
 
         var userId = User.Claims.GetUserIdFromJwtToken();
 
-        var data = await _quizService.AddQuizRangeScore(userId, id, models);
+        var result = await _quizService.AddQuizRangeScore(userId, id, models);
 
-        return Ok(data);
+        return Ok(result);
     }
 
     [HttpPatch("{id}")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
-        var data = await _quizService.SoftDelete(id);
+        var result = await _quizService.SoftDelete(id);
 
-        return Ok(data);
+        return Ok(result);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> HardDelete(Guid id)
     {
-        var data = await _quizService.HardDelete(id);
+        var result = await _quizService.HardDelete(id);
 
-        return Ok(data);
+        return Ok(result);
     }
 
+    [HttpPost("submit")]
+    public async Task<IActionResult> SubmitQuiz([FromBody] SubmitQuizRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest();
+        }
 
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _quizService.SubmitQuizAsync(userId, request);
+
+        return Ok(result);
+    }
 }

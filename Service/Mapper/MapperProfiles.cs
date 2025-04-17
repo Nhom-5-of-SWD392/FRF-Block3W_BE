@@ -22,7 +22,7 @@ public class MapperProfiles : Profile
         CreateMap<QuizQuestionCreateModel, QuizQuestion>();
 
         //QuizAnswer
-        CreateMap<QuizAnswerCreateModel, QuizAnswer>();
+        CreateMap<QuizAnswerModel, QuizAnswer>();
 
         //Topic
         CreateMap<TopicCreateModel, Topic>();

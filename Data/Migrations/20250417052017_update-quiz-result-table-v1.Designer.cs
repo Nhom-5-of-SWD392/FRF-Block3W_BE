@@ -3,6 +3,7 @@ using System;
 using Data.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250417052017_update-quiz-result-table-v1")]
+    partial class updatequizresulttablev1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -474,16 +477,13 @@ namespace Data.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EssayAnswerText")
-                        .HasColumnType("text");
-
                     b.Property<double>("EvaluationScore")
                         .HasColumnType("double precision");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("QuizAnswerId")
+                    b.Property<Guid>("QuizAnswerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("QuizId")
@@ -952,7 +952,9 @@ namespace Data.Migrations
                 {
                     b.HasOne("Data.Entities.QuizAnswer", "QuizAnswer")
                         .WithMany("QuizDetails")
-                        .HasForeignKey("QuizAnswerId");
+                        .HasForeignKey("QuizAnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Data.Entities.Quiz", "Quiz")
                         .WithMany("QuizDetails")

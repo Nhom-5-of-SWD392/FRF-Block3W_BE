@@ -5,6 +5,7 @@ namespace Data.Entities;
 public class QuizDetail : BaseEntities
 {
     public double EvaluationScore { get; set; } = 0;
+    public string? EssayAnswerText { get; set; }
 
     //Foreign Keys
     public Guid QuizQuestionId { get; set; }
@@ -15,7 +16,7 @@ public class QuizDetail : BaseEntities
     [ForeignKey("QuizId")]
     public Quiz? Quiz { get; set; }
 
-    public Guid QuizAnswerId { get; set; }
+    public Guid? QuizAnswerId { get; set; }
     [ForeignKey("QuizAnswerId")]
     public QuizAnswer? QuizAnswer { get; set; }
 

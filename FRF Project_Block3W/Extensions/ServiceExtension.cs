@@ -51,6 +51,9 @@ public static class ServiceExtension
         //Quiz
         services.AddScoped<IQuizService, QuizService>();
         services.AddScoped<ISortHelpers<Quiz>, SortHelper<Quiz>>();
+
+        //QuizResult
+        services.AddScoped<ISortHelpers<QuizResult>, SortHelper<QuizResult>>();
     }
 
     public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)

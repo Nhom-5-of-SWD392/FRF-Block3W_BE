@@ -83,4 +83,19 @@ public class QuizAnswerResponse
     public int Score { get; set; }
 }
 
+public class SubmitQuizRequest
+{
+    public Guid QuizId { get; set; }
+
+    public List<SubmitAnswerItem> Answers { get; set; } = new();
+}
+
+public class SubmitAnswerItem
+{
+    public Guid QuestionId { get; set; }
+    public Guid? AnswerId { get; set; } 
+    public string? EssayAnswer { get; set; }
+}
+
+
 
