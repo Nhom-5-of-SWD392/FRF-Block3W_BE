@@ -35,4 +35,14 @@ public class QuizResultController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPost("evaluate")]
+    public async Task<IActionResult> EvaluateInterviewAsync([FromBody] EvaluateEssayRequest model)
+    {
+        var evaluatorId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _quizService.EvaluateInterviewAsync(evaluatorId, model);
+
+        return Ok(result);
+    }
 }

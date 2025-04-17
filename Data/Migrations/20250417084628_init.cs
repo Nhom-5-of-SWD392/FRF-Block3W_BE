@@ -6,100 +6,11 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Data.Migrations
 {
     /// <inheritdoc />
-    public partial class initv1 : Migration
+    public partial class init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_User_Role_RoleId",
-                table: "User");
-
-            migrationBuilder.DropTable(
-                name: "PermissionAssignment");
-
-            migrationBuilder.DropTable(
-                name: "Permission");
-
-            migrationBuilder.DropTable(
-                name: "Role");
-
-            migrationBuilder.DropIndex(
-                name: "IX_User_RoleId",
-                table: "User");
-
-            migrationBuilder.RenameColumn(
-                name: "RoleId",
-                table: "User",
-                newName: "UpdatedBy");
-
-            migrationBuilder.RenameColumn(
-                name: "IsActive",
-                table: "User",
-                newName: "IsModerator");
-
-            migrationBuilder.RenameColumn(
-                name: "FullName",
-                table: "User",
-                newName: "LastName");
-
-            migrationBuilder.RenameColumn(
-                name: "DateUpdate",
-                table: "User",
-                newName: "UpdatedAt");
-
-            migrationBuilder.RenameColumn(
-                name: "DateCreate",
-                table: "User",
-                newName: "Dob");
-
-            migrationBuilder.RenameColumn(
-                name: "Avatar",
-                table: "User",
-                newName: "ForgotPwdToken");
-
-            migrationBuilder.AddColumn<string>(
-                name: "AvatarUrl",
-                table: "User",
-                type: "text",
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<string>(
-                name: "Bio",
-                table: "User",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "CreatedAt",
-                table: "User",
-                type: "timestamp with time zone",
-                nullable: false,
-                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "CreatedBy",
-                table: "User",
-                type: "uuid",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddColumn<string>(
-                name: "FirstName",
-                table: "User",
-                type: "character varying(50)",
-                maxLength: 50,
-                nullable: false,
-                defaultValue: "");
-
-            migrationBuilder.AddColumn<int>(
-                name: "Role",
-                table: "User",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
             migrationBuilder.CreateTable(
                 name: "Ingredient",
                 columns: table => new
@@ -115,6 +26,124 @@ namespace Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Ingredient", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Quiz",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Quiz", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Topic",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Topic", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "User",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FirstName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    LastName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Phone = table.Column<string>(type: "character varying(13)", maxLength: 13, nullable: true),
+                    Dob = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    UserName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Password = table.Column<string>(type: "text", nullable: false),
+                    Gender = table.Column<int>(type: "integer", nullable: false),
+                    Bio = table.Column<string>(type: "text", nullable: true),
+                    Address = table.Column<string>(type: "text", nullable: true),
+                    AvatarUrl = table.Column<string>(type: "text", nullable: false),
+                    ForgotPwdToken = table.Column<string>(type: "text", nullable: true),
+                    ForgotPwdTokenExpiration = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    IsModerator = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_User", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "QuizQuestion",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuestionText = table.Column<string>(type: "text", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_QuizQuestion", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizQuestion_Quiz_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quiz",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "QuizRangeScore",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MinScore = table.Column<int>(type: "integer", nullable: false),
+                    MaxScore = table.Column<int>(type: "integer", nullable: false),
+                    Result = table.Column<int>(type: "integer", nullable: false),
+                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_QuizRangeScore", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizRangeScore_Quiz_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quiz",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -209,31 +238,14 @@ namespace Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Quiz",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
-                    Type = table.Column<int>(type: "integer", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Quiz", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "QuizResult",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     FinalScore = table.Column<double>(type: "double precision", nullable: false),
                     Result = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
                     QuizMadeById = table.Column<Guid>(type: "uuid", nullable: false),
                     EvaluateById = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
@@ -245,6 +257,12 @@ namespace Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_QuizResult", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizResult_Quiz_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quiz",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_QuizResult_User_EvaluateById",
                         column: x => x.EvaluateById,
@@ -260,11 +278,14 @@ namespace Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Topic",
+                name: "QuizAnswer",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false),
+                    AnswerText = table.Column<string>(type: "text", nullable: true),
+                    Score = table.Column<int>(type: "integer", nullable: false),
+                    QuizQuestionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
                     CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
@@ -273,7 +294,19 @@ namespace Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Topic", x => x.Id);
+                    table.PrimaryKey("PK_QuizAnswer", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizAnswer_QuizQuestion_QuizQuestionId",
+                        column: x => x.QuizQuestionId,
+                        principalTable: "QuizQuestion",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_QuizAnswer_Quiz_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quiz",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -399,57 +432,6 @@ namespace Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "QuizQuestion",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuestionText = table.Column<string>(type: "text", nullable: false),
-                    Type = table.Column<int>(type: "integer", nullable: false),
-                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_QuizQuestion", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_QuizQuestion_Quiz_QuizId",
-                        column: x => x.QuizId,
-                        principalTable: "Quiz",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "QuizRangeScore",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    MinScore = table.Column<int>(type: "integer", nullable: false),
-                    MaxScore = table.Column<int>(type: "integer", nullable: false),
-                    Result = table.Column<int>(type: "integer", nullable: false),
-                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_QuizRangeScore", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_QuizRangeScore_Quiz_QuizId",
-                        column: x => x.QuizId,
-                        principalTable: "Quiz",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "PostTopic",
                 columns: table => new
                 {
@@ -475,6 +457,51 @@ namespace Data.Migrations
                         name: "FK_PostTopic_Topic_TopicId",
                         column: x => x.TopicId,
                         principalTable: "Topic",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "QuizDetail",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    EvaluationScore = table.Column<double>(type: "double precision", nullable: false),
+                    EssayAnswerText = table.Column<string>(type: "text", nullable: true),
+                    QuizQuestionId = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuizAnswerId = table.Column<Guid>(type: "uuid", nullable: true),
+                    QuizResultId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_QuizDetail", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_QuizDetail_QuizAnswer_QuizAnswerId",
+                        column: x => x.QuizAnswerId,
+                        principalTable: "QuizAnswer",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_QuizDetail_QuizQuestion_QuizQuestionId",
+                        column: x => x.QuizQuestionId,
+                        principalTable: "QuizQuestion",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_QuizDetail_QuizResult_QuizResultId",
+                        column: x => x.QuizResultId,
+                        principalTable: "QuizResult",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_QuizDetail_Quiz_QuizId",
+                        column: x => x.QuizId,
+                        principalTable: "Quiz",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -506,83 +533,6 @@ namespace Data.Migrations
                         name: "FK_Reaction_User_UserId",
                         column: x => x.UserId,
                         principalTable: "User",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "QuizAnswer",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    AnswerText = table.Column<string>(type: "text", nullable: true),
-                    Score = table.Column<int>(type: "integer", nullable: false),
-                    QuizQuestionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_QuizAnswer", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_QuizAnswer_QuizQuestion_QuizQuestionId",
-                        column: x => x.QuizQuestionId,
-                        principalTable: "QuizQuestion",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_QuizAnswer_Quiz_QuizId",
-                        column: x => x.QuizId,
-                        principalTable: "Quiz",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "QuizDetail",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    EvaluationScore = table.Column<double>(type: "double precision", nullable: false),
-                    QuizQuestionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuizId = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuizAnswerId = table.Column<Guid>(type: "uuid", nullable: false),
-                    QuizResultId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedBy = table.Column<Guid>(type: "uuid", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_QuizDetail", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_QuizDetail_QuizAnswer_QuizAnswerId",
-                        column: x => x.QuizAnswerId,
-                        principalTable: "QuizAnswer",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_QuizDetail_QuizQuestion_QuizQuestionId",
-                        column: x => x.QuizQuestionId,
-                        principalTable: "QuizQuestion",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_QuizDetail_QuizResult_QuizResultId",
-                        column: x => x.QuizResultId,
-                        principalTable: "QuizResult",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_QuizDetail_Quiz_QuizId",
-                        column: x => x.QuizId,
-                        principalTable: "Quiz",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -708,6 +658,11 @@ namespace Data.Migrations
                 column: "EvaluateById");
 
             migrationBuilder.CreateIndex(
+                name: "IX_QuizResult_QuizId",
+                table: "QuizResult",
+                column: "QuizId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_QuizResult_QuizMadeById",
                 table: "QuizResult",
                 column: "QuizMadeById");
@@ -777,141 +732,8 @@ namespace Data.Migrations
             migrationBuilder.DropTable(
                 name: "Quiz");
 
-            migrationBuilder.DropColumn(
-                name: "AvatarUrl",
-                table: "User");
-
-            migrationBuilder.DropColumn(
-                name: "Bio",
-                table: "User");
-
-            migrationBuilder.DropColumn(
-                name: "CreatedAt",
-                table: "User");
-
-            migrationBuilder.DropColumn(
-                name: "CreatedBy",
-                table: "User");
-
-            migrationBuilder.DropColumn(
-                name: "FirstName",
-                table: "User");
-
-            migrationBuilder.DropColumn(
-                name: "Role",
-                table: "User");
-
-            migrationBuilder.RenameColumn(
-                name: "UpdatedBy",
-                table: "User",
-                newName: "RoleId");
-
-            migrationBuilder.RenameColumn(
-                name: "UpdatedAt",
-                table: "User",
-                newName: "DateUpdate");
-
-            migrationBuilder.RenameColumn(
-                name: "LastName",
-                table: "User",
-                newName: "FullName");
-
-            migrationBuilder.RenameColumn(
-                name: "IsModerator",
-                table: "User",
-                newName: "IsActive");
-
-            migrationBuilder.RenameColumn(
-                name: "ForgotPwdToken",
-                table: "User",
-                newName: "Avatar");
-
-            migrationBuilder.RenameColumn(
-                name: "Dob",
-                table: "User",
-                newName: "DateCreate");
-
-            migrationBuilder.CreateTable(
-                name: "Permission",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    DateCreate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DateUpdate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    Resource = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Permission", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Role",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    DateCreate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DateUpdate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDefault = table.Column<bool>(type: "boolean", nullable: true),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
-                    Name = table.Column<string>(type: "text", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Role", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "PermissionAssignment",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    PermissionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    RoleId = table.Column<Guid>(type: "uuid", nullable: false),
-                    DateCreate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DateUpdate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_PermissionAssignment", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_PermissionAssignment_Permission_PermissionId",
-                        column: x => x.PermissionId,
-                        principalTable: "Permission",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_PermissionAssignment_Role_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "Role",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_User_RoleId",
-                table: "User",
-                column: "RoleId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PermissionAssignment_PermissionId",
-                table: "PermissionAssignment",
-                column: "PermissionId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PermissionAssignment_RoleId",
-                table: "PermissionAssignment",
-                column: "RoleId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_User_Role_RoleId",
-                table: "User",
-                column: "RoleId",
-                principalTable: "Role",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+            migrationBuilder.DropTable(
+                name: "User");
         }
     }
 }

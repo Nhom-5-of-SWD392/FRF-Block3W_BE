@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250417052017_update-quiz-result-table-v1")]
-    partial class updatequizresulttablev1
+    [Migration("20250417084628_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -477,13 +477,16 @@ namespace Data.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("EssayAnswerText")
+                        .HasColumnType("text");
+
                     b.Property<double>("EvaluationScore")
                         .HasColumnType("double precision");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("QuizAnswerId")
+                    b.Property<Guid?>("QuizAnswerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("QuizId")
@@ -952,9 +955,7 @@ namespace Data.Migrations
                 {
                     b.HasOne("Data.Entities.QuizAnswer", "QuizAnswer")
                         .WithMany("QuizDetails")
-                        .HasForeignKey("QuizAnswerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("QuizAnswerId");
 
                     b.HasOne("Data.Entities.Quiz", "Quiz")
                         .WithMany("QuizDetails")
