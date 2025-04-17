@@ -43,12 +43,13 @@ public class TopicService : ITopicService
 				throw new AppException(ErrorMessage.Unauthorize);
 			}
 
-			var data = _mapper.Map<TopicCreateModel, Topic>(model);
+		var data = _mapper.Map<TopicCreateModel, Topic>(model);
 			data.CreatedBy = new Guid(userId);
-			_dataContext.Topic.Add(data);
-			await _dataContext.SaveChangesAsync();
-			return data.Id;
-		}
+		_dataContext.Topic.Add(data);
+		await _dataContext.SaveChangesAsync();
+		
+		return data.Id;
+	}
 		catch (Exception e)
 		{
 			Console.WriteLine(e);
@@ -60,16 +61,16 @@ public class TopicService : ITopicService
 	{
 		try
 		{
-			var data = await GetTopicById(id);
+		var data = await GetTopicById(id);
 			if (data == null)
-			{
-				throw new AppException(ErrorMessage.IdNotExist);
-			}
-			data.IsDeleted = true;
-			_dataContext.Topic.Update(data);
-			await _dataContext.SaveChangesAsync();
-			return data.Id;
+		{
+			throw new AppException(ErrorMessage.IdNotExist);
 		}
+		data.IsDeleted = true;
+		_dataContext.Topic.Update(data);
+		await _dataContext.SaveChangesAsync();
+		return data.Id;
+	}
 		catch (Exception e)
 		{
 			Console.WriteLine(e);

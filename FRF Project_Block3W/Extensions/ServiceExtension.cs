@@ -31,6 +31,8 @@ public static class ServiceExtension
 
     public static void AddBusinessServices(this IServiceCollection services)
     {
+        services.AddSingleton<ICloudinaryService, CloudinaryService>();
+
         services.AddScoped<IJwtUtils, JwtUtils>();
 
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
@@ -40,6 +42,11 @@ public static class ServiceExtension
         //User
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ISortHelpers<User>, SortHelper<User>>();
+        services.AddScoped<IFilterHelper<User>, FilterHelper<User>>();
+
+        //ModeratorApplication
+        services.AddScoped<ISortHelpers<ModeratorApplication>, SortHelper<ModeratorApplication>>();
+        services.AddScoped<IFilterHelper<ModeratorApplication>, FilterHelper<ModeratorApplication>>();
 
         //Quiz
         services.AddScoped<IQuizService, QuizService>();

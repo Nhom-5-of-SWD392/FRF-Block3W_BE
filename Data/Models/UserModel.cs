@@ -11,12 +11,8 @@ public class UserViewModel : BaseModel
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
-    public Gender Gender { get; set; }
-    public string Phone { get; set; } = string.Empty;
-    public string Address { get; set; } = string.Empty;
     public string Avatar { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-    public RoleViewModel? Role { get; set; } = new ();
+    public bool IsModerator { get; set; }
 }
 
 public class UserCreateModel
@@ -39,12 +35,16 @@ public class UserCreateModel
 
 public class UserUpdateModel
 {
-
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Phone { get; set; }
+    public DateTime Dob { get; set; }
+    public string? Email { get; set; }
+    public string? UserName { get; set; }
+    public string? Bio { get; set; }
+    public string? Address { get; set; }
     [JsonIgnore]
-    public DateTime? LastActivity { get; set; } = DateTime.UtcNow;
-    public Guid RoleId { get; set; }
-    [JsonIgnore]
-    public DateTime DateUpdate { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class UserQueryModel : QueryStringParameters
@@ -95,7 +95,19 @@ public class PasswordResetModel
     public string NewPassword { get; set; } = string.Empty;
 }
 
-//public class GoogleLoginRequest
-//{
-//    public string? GoogleIdToken { get; set; }
-//}
+public class RegisterUserModel
+{
+    public IFormFile? AvatarUrl { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
+    public DateTime Dob { get; set; }
+    public Gender Gender { get; set; }
+    public string? Bio { get; set; }
+    public string? Address { get; set; }
+}
+
