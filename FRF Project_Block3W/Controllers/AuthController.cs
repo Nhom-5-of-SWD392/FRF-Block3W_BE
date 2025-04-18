@@ -1,6 +1,7 @@
 ﻿using Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 using Service.Core;
 using Service.Utilities;
 
@@ -69,7 +70,9 @@ public class AuthController : ControllerBase
 
             var data = await _userService.LoginWithGoogle(tokenResponse.IdToken!);
 
-            return Ok(data);
+            var redirectUrl = $"http://localhost:5173/oauth?token={data.TokenString}";
+
+            return Redirect(redirectUrl);
         }
         catch (Exception ex)
         {
