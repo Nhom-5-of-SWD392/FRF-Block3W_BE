@@ -64,6 +64,9 @@ public static class ServiceExtension
         //Media
         services.AddScoped<IMediaService, MediaService>();
 
+        //Instruction
+        services.AddScoped<IInstructionService, InstructionService>();
+
     }
 
     public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)

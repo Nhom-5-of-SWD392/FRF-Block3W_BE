@@ -14,19 +14,11 @@ public class MediaController : ControllerBase
         _mediaService = mediaService;
     }
 
-    //[HttpPost("{postId}")]
-    //public async Task<IActionResult> AddMedia(Guid postId, [FromForm] IFormFile file)
-    //{
-    //    var url = await _mediaService.AddMediaAsync(postId, file);
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> RemoveMedia(Guid id)
+    {
+        var result = await _mediaService.RemoveMediaAsync(id);
 
-    //    return Ok(url);
-    //}
-
-    //[HttpDelete("{id}")]
-    //public async Task<IActionResult> RemoveMedia(Guid id)
-    //{
-    //    var result = await _mediaService.RemoveMediaAsync(id);
-
-    //    return Ok(result);
-    //}
+        return Ok(result);
+    }
 }

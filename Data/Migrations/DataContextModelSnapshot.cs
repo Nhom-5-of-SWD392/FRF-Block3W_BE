@@ -64,7 +64,7 @@ namespace Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Comment");
+                    b.ToTable("Comment", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Favorite", b =>
@@ -100,7 +100,7 @@ namespace Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Favorite");
+                    b.ToTable("Favorite", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Ingredient", b =>
@@ -130,7 +130,7 @@ namespace Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Ingredient");
+                    b.ToTable("Ingredient", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Instruction", b =>
@@ -168,7 +168,7 @@ namespace Data.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Instruction");
+                    b.ToTable("Instruction", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Media", b =>
@@ -206,7 +206,7 @@ namespace Data.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("Media");
+                    b.ToTable("Media", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.ModeratorApplication", b =>
@@ -248,7 +248,7 @@ namespace Data.Migrations
 
                     b.HasIndex("RegisterById");
 
-                    b.ToTable("ModeratorApplication");
+                    b.ToTable("ModeratorApplication", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Notification", b =>
@@ -291,7 +291,7 @@ namespace Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notification");
+                    b.ToTable("Notification", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Post", b =>
@@ -339,7 +339,7 @@ namespace Data.Migrations
 
                     b.HasIndex("PostById");
 
-                    b.ToTable("Post");
+                    b.ToTable("Post", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.PostIngredient", b =>
@@ -383,7 +383,7 @@ namespace Data.Migrations
 
                     b.HasIndex("PostId");
 
-                    b.ToTable("PostIngredient");
+                    b.ToTable("PostIngredient", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.PostTopic", b =>
@@ -419,7 +419,7 @@ namespace Data.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("PostTopic");
+                    b.ToTable("PostTopic", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Quiz", b =>
@@ -455,7 +455,7 @@ namespace Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Quiz");
+                    b.ToTable("Quiz", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.QuizAnswer", b =>
@@ -497,7 +497,7 @@ namespace Data.Migrations
 
                     b.HasIndex("QuizQuestionId");
 
-                    b.ToTable("QuizAnswer");
+                    b.ToTable("QuizAnswer", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.QuizDetail", b =>
@@ -549,7 +549,7 @@ namespace Data.Migrations
 
                     b.HasIndex("QuizResultId");
 
-                    b.ToTable("QuizDetail");
+                    b.ToTable("QuizDetail", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.QuizQuestion", b =>
@@ -587,7 +587,7 @@ namespace Data.Migrations
 
                     b.HasIndex("QuizId");
 
-                    b.ToTable("QuizQuestion");
+                    b.ToTable("QuizQuestion", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.QuizRangeScore", b =>
@@ -627,7 +627,7 @@ namespace Data.Migrations
 
                     b.HasIndex("QuizId");
 
-                    b.ToTable("QuizRangeScore");
+                    b.ToTable("QuizRangeScore", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.QuizResult", b =>
@@ -677,7 +677,7 @@ namespace Data.Migrations
 
                     b.HasIndex("QuizMadeById");
 
-                    b.ToTable("QuizResult");
+                    b.ToTable("QuizResult", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Reaction", b =>
@@ -716,7 +716,7 @@ namespace Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Reaction");
+                    b.ToTable("Reaction", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Topic", b =>
@@ -746,7 +746,7 @@ namespace Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Topic");
+                    b.ToTable("Topic", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.User", b =>
@@ -830,7 +830,7 @@ namespace Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("User");
+                    b.ToTable("User", (string)null);
                 });
 
             modelBuilder.Entity("Data.Entities.Comment", b =>

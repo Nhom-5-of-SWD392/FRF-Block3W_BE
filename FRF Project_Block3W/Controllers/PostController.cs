@@ -16,31 +16,20 @@ public class PostController : ControllerBase
 		_postService = postService;
 	}
 
-	[HttpPost]
-	public async Task<IActionResult> CreatePost([FromBody] PostCreateModel model)
-	{
-		if (!ModelState.IsValid)
-		{
-			return BadRequest(ModelState);
-		}
-		var userId = User.Claims.GetUserIdFromJwtToken();		
+    [HttpGet("public")]
+    public async Task<IActionResult> GetAllApprovedPostsAsync([FromQuery] PostQueryModel query)
+    {
+        var result = await _postService.GetAllApprovedPostsAsync(query);
 
-		var result = await _postService.CreateFullPost(userId, model);
+        return Ok(result);
+    }
 
-		return Ok(result);
-	}
-
-	[HttpGet]
-	public async Task<IActionResult> GetAllPostByUserId([FromQuery] PostQueryModel query)
+    [HttpGet]
+	public async Task<IActionResult> GetAllPostByUser([FromQuery]PostQueryModel query)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
 
 		var result = await _postService.GetAllPostByUser(query,userId);
-
-		if (result == null)
-		{
-			return NotFound();
-		}
 
 		return Ok(result);
 	}
@@ -62,4 +51,43 @@ public class PostController : ControllerBase
 
 		return Ok(data);
 	}
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPostDetail(Guid id)
+    {
+        var result = await _postService.GetPostDetailAsync(id);
+
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreatePostWithMedia([FromBody] PostCreateModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _postService.CreateFullPost(userId, model);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/media")]
+    public async Task<IActionResult> AddMediaAsync(Guid id, List<IFormFile> file)
+    {
+
+        var result = await _postService.AddMediaAsync(id, file);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/instruction")]
+    public async Task<IActionResult> AddInstructionToPostAsync(Guid id, InstructionRequestModel instructions)
+    {
+        var result = await _postService.AddInstructionToPostAsync(id, instructions);
+
+        return Ok(result);
+    }
 }
