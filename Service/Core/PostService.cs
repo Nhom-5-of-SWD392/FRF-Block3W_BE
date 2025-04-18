@@ -110,7 +110,16 @@ public class PostService : IPostService
 			{
 				var postViewModel = _mapper.Map<Post, PostViewModel>(topic);
 
-				postViewModel.Topics = topic.PostTopic.ToList();
+				if (topic.PostTopic==null)
+				{
+					postViewModel.Topics = new List<PostTopic>();
+				}
+				else
+				{
+					postViewModel.Topics = topic.PostTopic.ToList();
+				}
+				
+
 
 				return postViewModel;
 			}).ToList();
