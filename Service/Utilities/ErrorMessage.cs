@@ -35,6 +35,7 @@ public static class ErrorMessage
 
     //Topic
     public static string TopicNotFound = "Topic not found.";
+    public static string TopicNotExist = "One or more topics do not exist in the system.";
 
     //Others
     public static string IdNotExist = "ID does not exist.";
@@ -42,4 +43,5 @@ public static class ErrorMessage
     public static string Unauthorize = "User is not authorized.";
     public static string NoVideo = "No Video uploaded";
     public static string UnsupportedFile = "Unsupported file type. Only images and videos are allowed.";
+    public static string OnlyAllowImage = "Only image allowed.";
 }

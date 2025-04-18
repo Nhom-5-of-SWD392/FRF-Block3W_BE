@@ -38,3 +38,8 @@ public class TopicQueryModel : QueryStringParameters
 
 	public string? Search { get; set; }
 }
+
+public class TopicAddToPostModel
+{
+    public Guid Id { get; set; }
+}

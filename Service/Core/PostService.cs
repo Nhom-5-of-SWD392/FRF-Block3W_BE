@@ -6,190 +6,334 @@ using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Service.Core;
 
 public interface IPostService
 {
 	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId);
-	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
-    Task<string> AddMediaAsync(Guid postId, IFormFile file);
+    Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostQueryModel query);
+    Task<Guid> CreateFullPost(string userId, PostCreateModel model);
+    Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
+    Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
+    Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
 }
 public class PostService : IPostService
 {
-	private readonly DataContext _dataContext;
-	private readonly IMapper _mapper;
-	private readonly ISortHelpers<Topic> _sortHelpers;
+    private readonly DataContext _dataContext;
+    private readonly IMapper _mapper;
+    private readonly ISortHelpers<Topic> _sortHelpers;
     private readonly ICloudinaryService _cloudinaryService;
 
     public PostService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers, ICloudinaryService cloudinaryService)
-	{
-		_dataContext = dataContext;
-		_mapper = mapper;
-		_sortHelpers = sortHelpers;
-		_cloudinaryService = cloudinaryService;
-	}
+    {
+        _dataContext = dataContext;
+        _mapper = mapper;
+        _sortHelpers = sortHelpers;
+        _cloudinaryService = cloudinaryService;
+    }
 
-	public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
-	{
-		using(var transaction = await _dataContext.Database.BeginTransactionAsync())
-		{
-			try
-			{
-				if (string.IsNullOrEmpty(userId))
-				{
-					throw new AppException(ErrorMessage.Unauthorize);
-				}
+    public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
+    {
+        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(userId))
+                {
+                    throw new AppException(ErrorMessage.Unauthorize);
+                }
 
-				var postData = _mapper.Map<PostCreateModel, Post>(model);
+                var postData = _mapper.Map<PostCreateModel, Post>(model);
 
-				postData.CreatedBy = new Guid(userId);
+                postData.CreatedBy = new Guid(userId);
 
-				postData.PostById= new Guid(userId);
+                postData.PostById = new Guid(userId);
 
-				await _dataContext.Post.AddAsync(postData);
+                await _dataContext.Post.AddAsync(postData);
 
-				if (model.Ingredients != null && model.Ingredients.Count > 0)
-				{
-					foreach (var item in model.Ingredients)
-					{
-						var ingredient = new Ingredient
-						{
-							Name = item.Name,
-							CreatedBy = new Guid(userId)
-						};
-						await _dataContext.Ingredient.AddAsync(ingredient);
+                if (model.Topics != null && model.Topics.Count > 0)
+                {
+                    var existingTopicIds = await _dataContext.Topic
+                        .Where(t => model.Topics.Select(mt => mt.Id).Contains(t.Id))
+                        .Select(t => t.Id)
+                        .ToListAsync();
 
-						var postIngredient = new PostIngredient
-						{
-							PostId = postData.Id,
-							IngredientId = ingredient.Id,
-							Quantity = item.Quantity,
-							Unit = item.Unit,
-						};
-                        postIngredient.CreatedBy = new Guid(userId);
+                    foreach (var topicId in existingTopicIds)
+                    {
+                        var postTopic = new PostTopic
+                        {
+                            PostId = postData.Id,
+                            TopicId = topicId,
+                            CreatedBy = new Guid(userId)
+                        };
+                        await _dataContext.PostTopic.AddAsync(postTopic);
+                    }
 
-						await _dataContext.PostIngredient.AddAsync(postIngredient);
-					}
-				}
+                    if (existingTopicIds.Count != model.Topics.Count)
+                    {
+                        throw new AppException(ErrorMessage.TopicNotExist);
+                    }
+                }
 
-				await _dataContext.SaveChangesAsync();
+                await _dataContext.SaveChangesAsync();
 
-				await transaction.CommitAsync();
+                await transaction.CommitAsync();
 
-				return postData.Id;
+                return postData.Id;
 
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e);
-				await transaction.RollbackAsync();
-				throw new Exception(e.Message);
-			}
-		}
-	}
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await transaction.RollbackAsync();
+                throw new Exception(e.Message);
+            }
+        }
+    }
 
-	public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId)
-	{
-		try
-		{
-			if (String.IsNullOrEmpty(userId))
-			{
-				throw new AppException(ErrorMessage.Unauthorize);
-			}
+    public async Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostQueryModel query)
+    {
+        try
+        {
+            var queryable = _dataContext.Post
+                .Where(p => !p.IsDeleted && p.Status == PostStatus.Approved)
+                .Include(p => p.PostTopic)
+                .AsQueryable();
 
-			var queryable = _dataContext.Post
-				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-				.AsQueryable();
+            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
 
-			queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+            var postView = data.Select(post =>
+            {
+                var postViewModel = _mapper.Map<Post, PostViewModel>(post);
 
-			var postView = data.Select(topic =>
-			{
-				var postViewModel = _mapper.Map<Post, PostViewModel>(topic);
+                postViewModel.Topics = post.PostTopic?.ToList() ?? new List<PostTopic>();
 
-				if (topic.PostTopic==null)
-				{
-					postViewModel.Topics = new List<PostTopic>();
-				}
-				else
-				{
-					postViewModel.Topics = topic.PostTopic.ToList();
-				}
-				
+                return postViewModel;
+            }).ToList();
+
+            return new PagingModel<PostViewModel>
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = postView
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception("An error occurred while fetching approved posts.");
+        }
+    }
+
+    public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId)
+    {
+        try
+        {
+            if (String.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var queryable = _dataContext.Post
+                .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
+                .AsQueryable();
+
+            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var postView = data.Select(topic =>
+            {
+                var postViewModel = _mapper.Map<Post, PostViewModel>(topic);
+
+                if (topic.PostTopic == null)
+                {
+                    postViewModel.Topics = new List<PostTopic>();
+                }
+                else
+                {
+                    postViewModel.Topics = topic.PostTopic.ToList();
+                }
 
 
-				return postViewModel;
-			}).ToList();
 
-			var pagingData = new PagingModel<PostViewModel>()
-			{
-				PageIndex = data.CurrentPage,
-				PageSize = data.PageSize,
-				TotalCount = data.TotalCount,
-				TotalPages = data.TotalPages,
-				pagingData = postView
-			};
+                return postViewModel;
+            }).ToList();
 
-			return pagingData;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw new Exception(e.Message);
-		}
-	}
+            var pagingData = new PagingModel<PostViewModel>()
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = postView
+            };
 
-	public Task<PostViewModel> GetById(Guid id)
-	{
-		throw new NotImplementedException();
-	}
+            return pagingData;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
 
-    public async Task<string> AddMediaAsync(Guid postId, IFormFile file)
+    public async Task<Post> GetById(Guid id)
+    {
+        try
+        {
+            var post = await _dataContext.Post
+                .FirstOrDefaultAsync(p => !p.IsDeleted && p.Id == id);
+            if (post == null)
+            {
+                throw new AppException(ErrorMessage.PostNotFound);
+            }
+
+            return post;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<PostDetailResponse> GetPostDetailAsync(Guid postId)
+    {
+        var post = await _dataContext.Post
+            .Include(p => p.PostBy)!
+            .Include(p => p.PostIngredients)!
+                .ThenInclude(pi => pi.Ingredient)!
+            .Include(p => p.PostTopic)!
+                .ThenInclude(pt => pt.Topic)
+            .Include(p => p.Medias)
+            .Include(p => p.Instructions)
+            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+
+        if (post == null)
+            throw new AppException(ErrorMessage.PostNotFound);
+
+        var response = new PostDetailResponse
+        {
+            Id = post.Id,
+            Title = post.Title,
+            Content = post.Content,
+            Status = post.Status.ToString(),
+            PostByName = post.PostBy?.FirstName + " " + post.PostBy?.LastName ?? "Unknown",
+
+            Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
+            {
+                Id = pi.Id,
+                Name = pi.Ingredient?.Name ?? "Unknown",
+                Quantity = pi.Quantity,
+                Unit = pi.Unit
+            }).ToList() ?? new(),
+
+            Topics = post.PostTopic?.Select(pt => pt.Topic?.Name ?? "Unnamed Topic").ToList() ?? new(),
+
+            MediaUrls = post.Medias?.Select(m => new MediaResponse
+            {
+                Id = m.Id,
+                Url = m.Url,
+                Type = m.Type
+            }).ToList() ?? new(),
+
+            Instructions = post.Instructions?.OrderBy(i => i.CreatedAt).Select(i => new InstructionResponse
+            {
+                Id = i.Id,
+                Content = i.Content,
+                ImageUrl = i.ImageUrl
+            }).ToList() ?? new()
+        };
+
+        return response;
+    }
+
+    public async Task<string> AddMediaAsync(Guid postId, List<IFormFile> files)
     {
         var post = await _dataContext.Post
             .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
         if (post == null)
             throw new AppException(ErrorMessage.PostNotFound);
 
-        var contentType = file.ContentType.ToLower();
-        MediaType mediaType;
+        var urls = new List<string>();
 
-        if (contentType.StartsWith("image/"))
+        foreach (var file in files)
         {
-            mediaType = MediaType.Image;
+            var contentType = file.ContentType.ToLower();
+            MediaType mediaType;
+
+            if (contentType.StartsWith("image/"))
+            {
+                mediaType = MediaType.Image;
+            }
+            else if (contentType.StartsWith("video/"))
+            {
+                mediaType = MediaType.Video;
+            }
+            else
+            {
+                throw new AppException(ErrorMessage.UnsupportedFile);
+            }
+
+            string path = mediaType == MediaType.Image ? $"{postId}/images" : $"{postId}/videos";
+
+            string url = mediaType == MediaType.Image
+                ? await _cloudinaryService.UploadImageAsync(file, path)
+                : await _cloudinaryService.UploadVideoAsync(file, path);
+
+            var media = new Media
+            {
+                Url = url,
+                Type = mediaType,
+                PostId = postId,
+                CreatedBy = post.CreatedBy,
+            };
+
+            await _dataContext.Media.AddAsync(media);
+
+            urls.Add(url);
         }
-        else if (contentType.StartsWith("video/"))
-        {
-            mediaType = MediaType.Video;
-        }
-        else
-        {
-            throw new AppException(ErrorMessage.UnsupportedFile);
-        }
 
-        string path = mediaType == MediaType.Image ? $"{postId}/images" : $"{postId}/videos";
-        string url = mediaType == MediaType.Image
-            ? await _cloudinaryService.UploadImageAsync(file, path)
-            : await _cloudinaryService.UploadVideoAsync(file, path);
-
-        var media = new Media
-        {
-            Url = url,
-            Type = mediaType,
-            PostId = postId
-        };
-
-        await _dataContext.Media.AddAsync(media);
         await _dataContext.SaveChangesAsync();
 
-        return url;
+        return "Uploaded!";
+    }
+
+    public async Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction)
+    {
+        var post = await GetById(postId);
+
+        string? imageUrl = null;
+        string path = $"{postId}/instructions";
+
+        if (instruction.Image != null)
+        {
+            if (!instruction.Image.ContentType.StartsWith("image/"))
+            {
+                throw new AppException(ErrorMessage.OnlyAllowImage);
+            }
+
+            imageUrl = await _cloudinaryService.UploadImageAsync(instruction.Image, path);
+        }
+
+        var newInstruction = new Instruction
+        {
+            PostId = postId,
+            Content = instruction.Content,
+            ImageUrl = imageUrl,
+            CreatedBy = post.CreatedBy
+        };
+
+        await _dataContext.Instruction.AddAsync(newInstruction);
+
+        await _dataContext.SaveChangesAsync();
+
+        return "Instruction Added!";
     }
 }

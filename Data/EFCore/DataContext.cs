@@ -33,6 +33,7 @@ public class DataContext : DbContext
     public DbSet<Reaction> Reaction { get; set; }
     public DbSet<Topic> Topic { get; set; }
     public DbSet<User> User { get; set; }
+    public DbSet<Instruction> Instruction { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
