@@ -2,24 +2,17 @@
 using Data.EFCore;
 using Data.Entities;
 using Data.Models;
-using FirebaseAdmin.Auth.Multitenancy;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Service.Core;
 
 public interface ITopicService
 {
 	Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query);
-	Task<Topic> GetTopicById(Guid id);
 	Task<Guid> Create(string userId,TopicCreateModel model);
 	Task<Guid> Update(string userId,Guid id,TopicUpdateModel model);
-	Task<Guid> Delete(Guid id);
+	Task<Guid> SoftDelete(Guid id);
 }
 public class TopicService : ITopicService
 {
@@ -33,8 +26,27 @@ public class TopicService : ITopicService
 		_mapper = mapper;
 		_sortHelpers = sortHelpers;
 	}
+    public async Task<Topic> GetById(Guid id)
+    {
+        try
+        {
+            var topic = await _dataContext.Topic
+                .FirstOrDefaultAsync(t => !t.IsDeleted && t.Id == id);
+            if (topic == null)
+            {
+                throw new AppException(ErrorMessage.TopicNotFound);
+            }
 
-	public async Task<Guid> Create(string userId,TopicCreateModel model)
+            return topic;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> Create(string userId, TopicCreateModel model)
 	{
 		try
 		{
@@ -44,8 +56,11 @@ public class TopicService : ITopicService
 			}
 
 			var data = _mapper.Map<TopicCreateModel, Topic>(model);
+
 			data.CreatedBy = new Guid(userId);
-			_dataContext.Topic.Add(data);
+
+			await _dataContext.Topic.AddAsync(data);
+
 			await _dataContext.SaveChangesAsync();
 		
 			return data.Id;
@@ -57,18 +72,22 @@ public class TopicService : ITopicService
 		}
 	}
 
-	public async Task<Guid> Delete(Guid id)
+	public async Task<Guid> SoftDelete(Guid id)
 	{
 		try
 		{
-			var data = await GetTopicById(id);
-				if (data == null)
+			var data = await GetById(id);
+			if (data == null)
 			{
-				throw new AppException(ErrorMessage.IdNotExist);
+				throw new AppException(ErrorMessage.TopicNotFound);
 			}
+
 			data.IsDeleted = true;
+
 			_dataContext.Topic.Update(data);
+
 			await _dataContext.SaveChangesAsync();
+
 			return data.Id;
 		}
 		catch (Exception e)
@@ -85,7 +104,7 @@ public class TopicService : ITopicService
 			var queryTopic = _dataContext.Topic
 				.Where(x => !x.IsDeleted);
 
-			SearchByKeyWord(ref queryTopic, query.Search);
+            queryTopic = queryTopic.SearchByKeyword(t => t.Name, query.Search);
 
 			var sortedData = _sortHelpers.ApplySort(queryTopic, query.OrderBy!);
 			var data = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
@@ -115,24 +134,6 @@ public class TopicService : ITopicService
 		}
 	}
 
-	public async Task<Topic> GetTopicById(Guid id)
-	{
-		try
-		{
-			var data = await _dataContext.Topic
-				.Where(x => x.Id == id && !x.IsDeleted)
-				.SingleOrDefaultAsync();
-			if (data == null) throw new AppException(ErrorMessage.IdNotExist);
-
-			return data;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw new AppException(e.Message);
-		}
-	}
-
 	public async Task<Guid> Update(string userId,Guid id, TopicUpdateModel model)
 	{
 		try
@@ -142,18 +143,22 @@ public class TopicService : ITopicService
 				throw new AppException(ErrorMessage.Unauthorize);
 			}
 
-			var data = await GetTopicById(id);
+			var data = await GetById(id);
+
 			if (data == null)
 			{
-				throw new AppException(ErrorMessage.IdNotExist);
+				throw new AppException(ErrorMessage.TopicNotFound);
 			}
 
 			var updateData = _mapper.Map(model,data);
-			updateData.UpdatedBy = new Guid(userId);
-			_dataContext.Topic.Update(updateData);
-			await _dataContext.SaveChangesAsync();
-			return data.Id;
 
+			updateData.UpdatedBy = new Guid(userId);
+
+			_dataContext.Topic.Update(updateData);
+
+			await _dataContext.SaveChangesAsync();
+
+			return data.Id;
 		}
 		catch (Exception e)
 		{

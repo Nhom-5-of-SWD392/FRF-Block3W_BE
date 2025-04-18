@@ -103,17 +103,18 @@ public class PasswordResetModel
 
 public class RegisterUserModel
 {
-    [Required(ErrorMessage = "Name is required")]
-    [RegularExpression("^[a-zA-Z\\s]+$", ErrorMessage = "Only letters are allowed")]
+    [Required(ErrorMessage = "First Name is required")]
+    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "First Name only letters are allowed")]
     public string FirstName { get; set; } = string.Empty;
-    [Required(ErrorMessage = "Name is required")]
-    [RegularExpression("^[a-zA-Z\\s]+$", ErrorMessage = "Only letters are allowed")]
+    [Required(ErrorMessage = "Last Name is required")]
+    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Last Name only letters are allowed")]
     public string LastName { get; set; } = string.Empty;
     [Required(ErrorMessage = "Email is required")]
     [EmailAddress(ErrorMessage = "Invalid email format")]
     public string Email { get; set; } = string.Empty;
-    [RegularExpression(@"^0\d{9}$", ErrorMessage = "Phone number must start with 0 and have 10 digits")]
+    [RegularExpression(@"^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$", ErrorMessage = "Invalid Vietnamese phone number format")]
     public string Phone { get; set; } = string.Empty;
+    [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Username must contain only letters and numbers, no spaces.")]
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string ConfirmPassword { get; set; } = string.Empty;

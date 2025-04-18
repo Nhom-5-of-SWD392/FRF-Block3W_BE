@@ -33,6 +33,9 @@ public static class ErrorMessage
     //Media
     public static string MediaNotFound = "Media not found.";
 
+    //Topic
+    public static string TopicNotFound = "Topic not found.";
+
     //Others
     public static string IdNotExist = "ID does not exist.";
     public static string AccessTokenFail = "Access token failed!";

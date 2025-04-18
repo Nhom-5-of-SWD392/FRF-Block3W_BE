@@ -1,4 +1,5 @@
 ﻿using Data.Enum;
+using Microsoft.AspNetCore.Routing.Constraints;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,7 +20,7 @@ public class Post : BaseEntities
 	public Guid PostById { get; set; }
 	[ForeignKey("PostById")]
 	public User? PostBy { get; set; }
-    public Guid ComfirmById { get; set; }
+    public Guid? ComfirmById { get; set; }
     [ForeignKey("ComfirmById")]
     public User? ConfirmBy { get; set; }
 
@@ -28,5 +29,6 @@ public class Post : BaseEntities
 	public IList<Favorite>? Favorites { get; set; }
 	public IList<Comment>? Comments { get; set; }
 	public IList<Media>? Medias { get; set; }
+	public IList<Instruction>? Instructions { get; set; }
 
 }

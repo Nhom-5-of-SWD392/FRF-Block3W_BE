@@ -143,8 +143,12 @@ public class UserService : IUserService
                 };
                 
                 var mapperData = _mapper.Map<UserCreateModel, User>(newUser);
+
                 await _dataContext.User.AddAsync(mapperData);
+
                 await _dataContext.SaveChangesAsync();
+
+                user = mapperData;
             }
 
             var authClaims = new List<Claim>
@@ -397,9 +401,9 @@ public class UserService : IUserService
             if (model.Password != model.ConfirmPassword)
                 throw new AppException("Passwords do not match.");
 
-            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName);
+            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName || x.Phone == model.Phone);
             if (existingUser != null)
-                throw new AppException("Email or username already exists.");
+                throw new AppException("Email or Username or Phone number already exists.");
 
             if (!IsValid(model.Password))
                 throw new AppException(

@@ -6,72 +6,72 @@
 
     public enum UserRole
     {
-        Member,
-        Administrator
+        Member = 0,
+        Administrator = 1
     }
 
     public enum Gender
     {
-        Male,
-        Female,
-        Other
+        Male = 0,
+        Female = 1,
+        Other = 2
     }
 
     public enum ApplicationStatus
 	{
-		Pending,
-		Approved,
-		Rejected
+		Pending = 0,
+		Approved = 1,
+		Rejected = 2
 	}
 
     public enum QuestionType
     {
-        Essay,
-        MultipleChoice
+        Essay = 0,
+        MultipleChoice = 1
     }
 
     public enum RangeScoreResult
     {
-        Excellent,
-        Good,
-        Average,
-        Poor,
-        Bad,
-        None
+        Excellent = 0,
+        Good = 1,
+        Average = 2,
+        Poor = 3,
+        Bad = 4,
+        None = 5
     }
 
     public enum QuizResultStatus
     {
-        Pending,
-        Completed
+        Pending = 0,
+        Completed = 1
     }
 
     public enum PostStatus
 	{
-		Pending,
-		Approved,
-		Rejected,
-        EditedPendingApproval
+		Pending = 0,
+		Approved = 1,
+		Rejected = 2,
+        EditedPendingApproval = 3
     }
 
     public enum MediaType
     {
-        Image,
-        Video,
+        Image = 0,
+        Video = 1,
     }
 
     public enum QuizType
     {
-        Interview,
-        Quiz,
+        Interview = 0,
+        Quiz = 1,
     }
 
     public enum ReactionType
     {
-        Love,
-        Happy,
-        Sad,
-        Bad,
-        Like
+        Love = 0,
+        Happy = 1,
+        Sad = 2,
+        Bad = 3,
+        Like = 4
     }
 }
