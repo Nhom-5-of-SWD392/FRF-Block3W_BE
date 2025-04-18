@@ -3,6 +3,7 @@ using System;
 using Data.EFCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Data.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250418052009_add-googleId-column")]
+    partial class addgoogleIdcolumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -131,44 +134,6 @@ namespace Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Ingredient");
-                });
-
-            modelBuilder.Entity("Data.Entities.Instruction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("PostId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PostId");
-
-                    b.ToTable("Instruction");
                 });
 
             modelBuilder.Entity("Data.Entities.Media", b =>
@@ -300,7 +265,7 @@ namespace Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ComfirmById")
+                    b.Property<Guid>("ComfirmById")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Content")
@@ -873,17 +838,6 @@ namespace Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Data.Entities.Instruction", b =>
-                {
-                    b.HasOne("Data.Entities.Post", "Post")
-                        .WithMany("Instructions")
-                        .HasForeignKey("PostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Post");
-                });
-
             modelBuilder.Entity("Data.Entities.Media", b =>
                 {
                     b.HasOne("Data.Entities.Post", "Post")
@@ -929,7 +883,8 @@ namespace Data.Migrations
                     b.HasOne("Data.Entities.User", "ConfirmBy")
                         .WithMany("ApprovedPosts")
                         .HasForeignKey("ComfirmById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("Data.Entities.User", "PostBy")
                         .WithMany("Posts")
@@ -1109,8 +1064,6 @@ namespace Data.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("Favorites");
-
-                    b.Navigation("Instructions");
 
                     b.Navigation("Medias");
 

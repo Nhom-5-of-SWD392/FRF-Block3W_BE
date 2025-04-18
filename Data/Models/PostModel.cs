@@ -21,7 +21,9 @@ public class PostCreateModel
 {
 	public string? Title { get; set; }
 	public string? Content { get; set; }
-	public List<IngredientDetailModel> Ingredients { get; set; } = new();
+	public List<Topic> Topics { get; set; } = new();
+	public List<InstructionDetailModel> Instructions { get; set; } = new();
+    public List<IngredientDetailModel> Ingredients { get; set; } = new();
 }
 
 public class PostDetailModel : BaseModel

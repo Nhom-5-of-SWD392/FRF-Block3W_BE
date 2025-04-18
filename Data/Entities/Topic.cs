@@ -7,5 +7,5 @@ public class Topic : BaseEntities
 	[Required(ErrorMessage = "Topic Name is required")]
 	public string Name { get; set; } = null!;
 	
-	public IList<PostTopic> PostTopics { get; set; }
+	public IList<PostTopic>? PostTopics { get; set; }
 }

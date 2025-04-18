@@ -61,7 +61,10 @@ public static class ServiceExtension
 		//Post
 		services.AddScoped<IPostService, PostService>();
 
-	}
+        //Media
+        services.AddScoped<IMediaService, MediaService>();
+
+    }
 
     public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
     {
@@ -92,20 +95,4 @@ public static class ServiceExtension
                 googleOptions.ClientSecret = googleModel?.ClientSecret;
             });
     }
-
-    //public static void ConfigureFirebaseCloudServices(this IServiceCollection services, FirebaseStorageModel model)
-    //{
-    //    var credential = GoogleCredential.FromFile(Environment.CurrentDirectory! + "\\" + model.FirebaseSDKFile);
-
-    //    if (FirebaseApp.DefaultInstance == null)
-    //    {
-    //        FirebaseApp.Create(new AppOptions
-    //        {
-    //            Credential = credential,
-    //            ProjectId = model.ProjectId
-    //        });
-    //    }
-    //    StorageClient _storageClient = StorageClient.Create(credential);
-    //    services.AddSingleton<IFirebaseStorageService>(new FirebaseStorageService(model.Bucket, _storageClient));
-    //}
 }

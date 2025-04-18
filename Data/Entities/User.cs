@@ -32,6 +32,7 @@ public class User : BaseEntities
     public DateTime? ForgotPwdTokenExpiration { get; set; }
     public UserRole Role { get; set; } = UserRole.Member;
     public bool IsModerator { get; set; } = false;
+    public string? GoogleId { get; set; }
 
     // Foreign Keys
     public IList<ModeratorApplication>? RequestRegister { get; set; }

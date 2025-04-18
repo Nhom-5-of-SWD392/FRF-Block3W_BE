@@ -15,7 +15,6 @@ public class Media : BaseEntities
     public Guid PostId { get; set; }
 	[ForeignKey("PostId")]
 	public Post? Post { get; set; }
-	
 }
 
 

@@ -20,17 +20,7 @@ public class TopicController : ControllerBase
 	public async Task<IActionResult> GetAll([FromQuery] TopicQueryModel query)
 	{
 		var data = await _topicService.GetAll(query);
-		return Ok(data);
-	}
 
-	[HttpGet("id")]
-	public async Task<IActionResult> GetTopicDetailAsync(Guid id)
-	{
-		var data = await _topicService.GetTopicById(id);
-		if (data == null)
-		{
-			return NotFound();
-		}
 		return Ok(data);
 	}
 
@@ -45,6 +35,7 @@ public class TopicController : ControllerBase
 		var userId = User.Claims.GetUserIdFromJwtToken();
 
 		var data = await _topicService.Create(userId,model);
+
 		return Ok(data);
 	}
 
@@ -55,19 +46,19 @@ public class TopicController : ControllerBase
 		{
 			return BadRequest();
 		}
-		var userId = User.Claims.GetUserIdFromJwtToken();
+
+		var userId = User.Claims.GetUserIdFromJwtToken();  
+
 		var data = await _topicService.Update(userId,id, model);
+
 		return Ok(data);
 	}
 
-	[HttpDelete("id")]
-	public async Task<IActionResult> DeleteTopic(Guid id)
+	[HttpPatch("id")]
+	public async Task<IActionResult> SoftDelete(Guid id)
 	{
-		var data = await _topicService.Delete(id);
-		if (data == null)
-		{
-			return NotFound();
-		}
+		var data = await _topicService.SoftDelete(id);
+
 		return Ok(data);
 	}
 }

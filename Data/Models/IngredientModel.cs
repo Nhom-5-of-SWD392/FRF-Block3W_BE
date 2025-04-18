@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Data.Models;
 
@@ -27,8 +22,6 @@ public class IngredientUpdateModel
 // PostIngredient View Model
 public class IngredientDetailModel 
 {
-	
-	
 	[Required]
 	public string Name { get; set; } = null!;
 	public string Unit { get; set; } = string.Empty;

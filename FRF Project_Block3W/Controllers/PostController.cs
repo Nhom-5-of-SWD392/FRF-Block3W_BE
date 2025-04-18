@@ -24,7 +24,9 @@ public class PostController : ControllerBase
 			return BadRequest(ModelState);
 		}
 		var userId = User.Claims.GetUserIdFromJwtToken();		
+
 		var result = await _postService.CreateFullPost(userId, model);
+
 		return Ok(result);
 	}
 
@@ -32,11 +34,14 @@ public class PostController : ControllerBase
 	public async Task<IActionResult> GetAllPostByUserId([FromQuery] PostQueryModel query)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
-		var result = await _postService.GetAllPostByUserId(query,userId);
+
+		var result = await _postService.GetAllPostByUser(query,userId);
+
 		if (result == null)
 		{
 			return NotFound();
 		}
+
 		return Ok(result);
 	}
 }

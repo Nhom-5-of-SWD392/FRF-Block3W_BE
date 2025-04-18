@@ -13,9 +13,7 @@ namespace Service.Core;
 
 public interface IPostService
 {
-	Task<PostViewModel> GetPostById(string id);
-	Task<PostDetailModel> GetPostDetailById(string id);
-	Task<PagingModel<PostViewModel>> GetAllPostByUserId(PostQueryModel model, string userId);
+	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId);
 	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
 	
 }
@@ -43,45 +41,40 @@ public class PostService : IPostService
 					throw new AppException(ErrorMessage.Unauthorize);
 				}
 
-				// Create Post object first
 				var postData = _mapper.Map<PostCreateModel, Post>(model);
-				postData.ComfirmById = new Guid(userId); 
+
 				postData.CreatedBy = new Guid(userId);
-				postData.PostById= postData.CreatedBy;
+
+				postData.PostById= new Guid(userId);
+
 				await _dataContext.Post.AddAsync(postData);
-
-
 
 				if (model.Ingredients != null && model.Ingredients.Count > 0)
 				{
 					foreach (var item in model.Ingredients)
 					{
-						//Create Ingredient first before assign to PostIngredient
 						var ingredient = new Ingredient
 						{
 							Name = item.Name,
-
 							CreatedBy = new Guid(userId)
 						};
 						await _dataContext.Ingredient.AddAsync(ingredient);
 
-					
-						//Map with Post Ingredient, assume that Post Ingredient contains IngredientId
-						//Asign this to Post
-						var PostIngredient = new PostIngredient
+						var postIngredient = new PostIngredient
 						{
 							PostId = postData.Id,
 							IngredientId = ingredient.Id,
 							Quantity = item.Quantity,
 							Unit = item.Unit,
 						};
-						PostIngredient.CreatedBy = new Guid(userId);
-						await _dataContext.PostIngredient.AddAsync(PostIngredient);
+                        postIngredient.CreatedBy = new Guid(userId);
+
+						await _dataContext.PostIngredient.AddAsync(postIngredient);
 					}
 				}
 
-				
 				await _dataContext.SaveChangesAsync();
+
 				await transaction.CommitAsync();
 
 				return postData.Id;
@@ -96,7 +89,7 @@ public class PostService : IPostService
 		}
 	}
 
-	public async Task<PagingModel<PostViewModel>> GetAllPostByUserId(PostQueryModel query,string userId)
+	public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId)
 	{
 		try
 		{
@@ -106,13 +99,17 @@ public class PostService : IPostService
 			}
 
 			var queryable = _dataContext.Post
-				.Where(x => !x.IsDeleted && x.CreatedBy == new Guid(userId)).AsQueryable();
+				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
+				.AsQueryable();
+
+			queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
 
 			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
 			var postView = data.Select(topic =>
 			{
 				var postViewModel = _mapper.Map<Post, PostViewModel>(topic);
+
 				if (topic.PostTopic==null)
 				{
 					postViewModel.Topics = new List<PostTopic>();
@@ -122,6 +119,7 @@ public class PostService : IPostService
 					postViewModel.Topics = topic.PostTopic.ToList();
 				}
 				
+
 
 				return postViewModel;
 			}).ToList();
@@ -146,17 +144,8 @@ public class PostService : IPostService
 
 	
 
-	public Task<PostViewModel> GetPostById(string id)
+	public Task<PostViewModel> GetById(Guid id)
 	{
 		throw new NotImplementedException();
 	}
-
-	
-
-	public Task<PostDetailModel> GetPostDetailById(string id)
-	{
-		throw new NotImplementedException();
-	}
-
-	
 }

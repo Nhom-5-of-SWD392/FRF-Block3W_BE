@@ -18,7 +18,7 @@ namespace Service.Core;
 public interface IUserService
 {
     Task<JWTToken> Login(UserRequest model);
-    //Task<JWTToken> LoginWithGoogle(string idToken);
+    Task<JWTToken> LoginWithGoogle(string idToken);
     Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
     Task<User> GetById(Guid id);
     Task<Guid> UpdatePersonalInformation(string userId, UserUpdateModel model);
@@ -114,56 +114,63 @@ public class UserService : IUserService
         }
     }
 
-    //public async Task<JWTToken> LoginWithGoogle(string idToken)
-    //{
-    //    try
-    //    {
-    //        var authenticateResult = await _googleAuthService.ValidateGoogleToken(idToken);
-    //        if (authenticateResult == null)
-    //        {
-    //            throw new AppException(ErrorMessage.AccessTokenFail);
-    //        }
-    //        var user = await _dataContext.User
-    //            .Where(i => i.Email == authenticateResult.Email || i.GoogleId == authenticateResult.Subject && !i.IsDeleted)
-    //            .FirstOrDefaultAsync();
+    public async Task<JWTToken> LoginWithGoogle(string idToken)
+    {
+        try
+        {
+            var authenticateResult = await _googleAuthService.ValidateGoogleToken(idToken);
+            if (authenticateResult == null)
+            {
+                throw new AppException(ErrorMessage.AccessTokenFail);
+            }
+            var user = await _dataContext.User
+                .Where(i => i.Email == authenticateResult.Email || i.GoogleId == authenticateResult.Subject && !i.IsDeleted)
+                .FirstOrDefaultAsync();
 
-    //        if (user == null)
-    //        {
-    //            var newUser = new UserCreateModel
-    //            {
-    //                Email = authenticateResult.Email,
-    //                FirstName = authenticateResult.GivenName ?? "",
-    //                LastName = authenticateResult.FamilyName ?? "",
-    //                AvatarUrl = authenticateResult.Picture ?? "",
-    //                Role = UserRole.Member,
-    //                UserName = authenticateResult.Email.Split('@')[0],
-    //                IsModerator = false,
-    //                Gender = Gender.Other,
-    //                GoogleId = authenticateResult.Subject
-    //            };
-    //            var createUser = await Create(newUser);
-    //        }
+            if (user == null)
+            {
+                var newUser = new UserCreateModel
+                {
+                    Email = authenticateResult.Email,
+                    FirstName = authenticateResult.GivenName ?? "",
+                    LastName = authenticateResult.FamilyName ?? "",
+                    AvatarUrl = authenticateResult.Picture ?? "",
+                    Role = UserRole.Member,
+                    UserName = authenticateResult.Email.Split('@')[0],
+                    IsModerator = false,
+                    Gender = Gender.Other,
+                    GoogleId = authenticateResult.Subject
+                };
+                
+                var mapperData = _mapper.Map<UserCreateModel, User>(newUser);
 
-    //        var authClaims = new List<Claim>
-    //        {
-    //            new Claim("id", user.Id.ToString()),
-    //            new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
-    //            new Claim(ClaimTypes.Email, user?.Email ?? ""),
-    //            new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
-    //            new Claim("avartar", user?.AvatarUrl ?? ""),
-    //            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-    //        };
+                await _dataContext.User.AddAsync(mapperData);
 
-    //        var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+                await _dataContext.SaveChangesAsync();
 
-    //        return token;
-    //    }
-    //    catch (Exception e)
-    //    {
-    //        Console.WriteLine(e);
-    //        throw new AppException(e.Message);
-    //    }
-    //}
+                user = mapperData;
+            }
+
+            var authClaims = new List<Claim>
+            {
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
+                new Claim(ClaimTypes.Email, user?.Email ?? ""),
+                new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
+                new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
+
+            var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+
+            return token;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
 
     public async Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
     {
@@ -394,9 +401,9 @@ public class UserService : IUserService
             if (model.Password != model.ConfirmPassword)
                 throw new AppException("Passwords do not match.");
 
-            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName);
+            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName || x.Phone == model.Phone);
             if (existingUser != null)
-                throw new AppException("Email or username already exists.");
+                throw new AppException("Email or Username or Phone number already exists.");
 
             if (!IsValid(model.Password))
                 throw new AppException(
