@@ -32,6 +32,14 @@ public class QuizController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("random-interview")]
+    public async Task<IActionResult> GetRandomInterviewQuiz()
+    {
+        var result = await _quizService.GetRandomInterviewQuizAsync();
+
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> CreateQuiz(CreateQuizRequest model)
     {

@@ -1,7 +1,10 @@
 ﻿using AutoMapper;
 using Data.EFCore;
 using Data.Entities;
+using Data.Enum;
 using Data.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
 using System;
 using System.Collections.Generic;
@@ -15,19 +18,21 @@ public interface IPostService
 {
 	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId);
 	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
-	
+    Task<string> AddMediaAsync(Guid postId, IFormFile file);
 }
 public class PostService : IPostService
 {
 	private readonly DataContext _dataContext;
 	private readonly IMapper _mapper;
 	private readonly ISortHelpers<Topic> _sortHelpers;
+    private readonly ICloudinaryService _cloudinaryService;
 
-	public PostService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers)
+    public PostService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers, ICloudinaryService cloudinaryService)
 	{
 		_dataContext = dataContext;
 		_mapper = mapper;
 		_sortHelpers = sortHelpers;
+		_cloudinaryService = cloudinaryService;
 	}
 
 	public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
@@ -142,10 +147,49 @@ public class PostService : IPostService
 		}
 	}
 
-	
-
 	public Task<PostViewModel> GetById(Guid id)
 	{
 		throw new NotImplementedException();
 	}
+
+    public async Task<string> AddMediaAsync(Guid postId, IFormFile file)
+    {
+        var post = await _dataContext.Post
+            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+        if (post == null)
+            throw new AppException(ErrorMessage.PostNotFound);
+
+        var contentType = file.ContentType.ToLower();
+        MediaType mediaType;
+
+        if (contentType.StartsWith("image/"))
+        {
+            mediaType = MediaType.Image;
+        }
+        else if (contentType.StartsWith("video/"))
+        {
+            mediaType = MediaType.Video;
+        }
+        else
+        {
+            throw new AppException(ErrorMessage.UnsupportedFile);
+        }
+
+        string path = mediaType == MediaType.Image ? $"{postId}/images" : $"{postId}/videos";
+        string url = mediaType == MediaType.Image
+            ? await _cloudinaryService.UploadImageAsync(file, path)
+            : await _cloudinaryService.UploadVideoAsync(file, path);
+
+        var media = new Media
+        {
+            Url = url,
+            Type = mediaType,
+            PostId = postId
+        };
+
+        await _dataContext.Media.AddAsync(media);
+        await _dataContext.SaveChangesAsync();
+
+        return url;
+    }
 }
