@@ -29,9 +29,10 @@ public static class ErrorMessage
 
     //Post
     public static string PostNotFound = "Post not found.";
+    public static string PostNotMatchWithUser = "Post does not match with user.";
 
-    //Media
-    public static string MediaNotFound = "Media not found.";
+	//Media
+	public static string MediaNotFound = "Media not found.";
 
     //Topic
     public static string TopicNotFound = "Topic not found.";

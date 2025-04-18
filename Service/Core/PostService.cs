@@ -18,6 +18,11 @@ public interface IPostService
 {
 	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId);
 	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
+
+	Task<Post> GetById (Guid id);
+	Task<Guid> SoftDelete(string userId,Guid id);
+	Task<Guid> HardDelete(string userId,Guid id);
+
     Task<string> AddMediaAsync(Guid postId, IFormFile file);
 }
 public class PostService : IPostService
@@ -147,12 +152,101 @@ public class PostService : IPostService
 		}
 	}
 
-	public Task<PostViewModel> GetById(Guid id)
+	
+
+	public async Task<Post> GetById(Guid id)	
 	{
-		throw new NotImplementedException();
+		try
+		{
+			var post = await _dataContext.Post
+				.FirstOrDefaultAsync(t => !t.IsDeleted && t.Id == id);
+
+			if (post == null)
+			{
+				throw new AppException(ErrorMessage.PostNotFound);
+			}
+
+			return post;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new AppException(e.Message);
+		}
 	}
 
-    public async Task<string> AddMediaAsync(Guid postId, IFormFile file)
+	public async Task<Guid> HardDelete(string userId, Guid id)
+	{
+		using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+		{
+			try
+			{
+				if (String.IsNullOrEmpty(userId))
+				{
+					throw new AppException(ErrorMessage.Unauthorize);
+				}
+
+				var data = await GetById(id);
+
+				if (data == null)
+				{
+					throw new AppException(ErrorMessage.PostNotFound);
+				}
+
+				if (data.CreatedBy != new Guid(userId))
+				{
+					throw new AppException(ErrorMessage.PostNotMatchWithUser);
+				}
+
+				_dataContext.Post.Remove(data);
+
+				await _dataContext.SaveChangesAsync();
+
+				await transaction.CommitAsync();
+				return id;
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine(e);
+				await transaction.RollbackAsync();
+				throw new Exception(e.Message);
+			}
+		}
+	}
+
+	public async Task<Guid> SoftDelete(string userId,Guid id)
+	{
+		try
+		{
+			if (String.IsNullOrEmpty(userId))
+			{
+				throw new AppException(ErrorMessage.Unauthorize);
+			}
+			var data = await GetById(id);
+			if (data == null)
+			{
+				throw new AppException(ErrorMessage.TopicNotFound);
+			}
+			if (data.CreatedBy != new Guid(userId))
+			{
+				throw new AppException(ErrorMessage.PostNotMatchWithUser);
+			}
+
+			data.IsDeleted = true;
+
+			_dataContext.Post.Update(data);
+
+			await _dataContext.SaveChangesAsync();
+
+			return data.Id;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+	public async Task<string> AddMediaAsync(Guid postId, IFormFile file)
     {
         var post = await _dataContext.Post
             .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);

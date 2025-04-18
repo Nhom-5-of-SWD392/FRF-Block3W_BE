@@ -44,4 +44,22 @@ public class PostController : ControllerBase
 
 		return Ok(result);
 	}
+
+	[HttpPatch("id")]
+	public async Task<IActionResult> SoftDelete(Guid id)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		var data = await _postService.SoftDelete(userId, id);
+
+		return Ok(data);
+	}
+
+	[HttpDelete("id")]
+	public async Task<IActionResult> HardDelete(Guid id)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		var data = await _postService.HardDelete(userId,id);
+
+		return Ok(data);
+	}
 }
