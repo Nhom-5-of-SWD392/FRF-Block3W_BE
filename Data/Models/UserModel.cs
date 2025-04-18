@@ -31,6 +31,7 @@ public class UserCreateModel
     public string? ForgotPwdToken { get; set; }
     public UserRole Role { get; set; }
     public bool? IsModerator { get; set; }
+    public string? GoogleId { get; set; }
 }
 
 public class UserUpdateModel
@@ -63,6 +64,11 @@ public class UserRequest
     public string? UserName { get; set; }
     [Required(ErrorMessage = "Password is required")]
     public string? Password { get; set; }
+}
+
+public class GoogleLoginRequest
+{
+    public string GoogleIdToken { get; set; } = string.Empty;
 }
 
 public class ChangePasswordModel
@@ -114,4 +120,3 @@ public class RegisterUserModel
     public DateTime Dob { get; set; }
     public Gender Gender { get; set; }
 }
-

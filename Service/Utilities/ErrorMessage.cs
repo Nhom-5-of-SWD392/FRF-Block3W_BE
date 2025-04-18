@@ -27,10 +27,16 @@ public static class ErrorMessage
     //QuizRangeScore
     public static string MinCantGreaterMax = "Min Score cannot be greater than Max Score.";
 
+    //Post
+    public static string PostNotFound = "Post not found.";
+
+    //Media
+    public static string MediaNotFound = "Media not found.";
 
     //Others
     public static string IdNotExist = "ID does not exist.";
     public static string AccessTokenFail = "Access token failed!";
     public static string Unauthorize = "User is not authorized.";
     public static string NoVideo = "No Video uploaded";
+    public static string UnsupportedFile = "Unsupported file type. Only images and videos are allowed.";
 }

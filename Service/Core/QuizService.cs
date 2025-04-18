@@ -375,7 +375,7 @@ public class QuizService : IQuizService
                     Id = Guid.NewGuid(),
                     QuizId = quiz.Id,
                     QuizMadeById = new Guid(userId),
-                    FinalScore = totalScore,
+                    FinalScore = quiz.Type == QuizType.Quiz ? totalScore : 0,
                     Status = quiz.Type == QuizType.Quiz ? QuizResultStatus.Completed : QuizResultStatus.Pending,
                     Result = quiz.Type == QuizType.Quiz ? GetRangeScore(quiz.QuizRangeScores!, totalScore) : RangeScoreResult.None,
                     CreatedBy = new Guid(userId),
@@ -570,6 +570,10 @@ public class QuizService : IQuizService
 
                     finalScore += score;
                 }
+                else
+                {
+                    finalScore += detail.EvaluationScore;
+                }
             }
 
             result.FinalScore = finalScore;
@@ -589,6 +593,7 @@ public class QuizService : IQuizService
     }
 
 
+    //private method
     private RangeScoreResult GetRangeScore(IEnumerable<QuizRangeScore> scores, double score)
     {
         foreach (var range in scores)
@@ -600,9 +605,5 @@ public class QuizService : IQuizService
         }
         return RangeScoreResult.Bad;
     }
-
-
-    //private method
-
 
 }

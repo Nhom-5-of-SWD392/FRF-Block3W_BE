@@ -32,16 +32,16 @@ public class AuthController : ControllerBase
         return Ok(data);
     }
 
-    //[AllowAnonymous]
-    //[HttpPost("signin-google")]
-    //public async Task<IActionResult> LoginWithGoogle([FromQuery] GoogleLoginRequest request)
-    //{
-    //    if (!ModelState.IsValid)
-    //    {
-    //        return BadRequest();
-    //    }
-    //    var data = await _userService.LoginWithGoogle(request.GoogleIdToken);
+    [AllowAnonymous]
+    [HttpPost("signin-google")]
+    public async Task<IActionResult> LoginWithGoogle([FromQuery] GoogleLoginRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest();
+        }
+        var data = await _userService.LoginWithGoogle(request.GoogleIdToken);
 
-    //    return Ok(data);
-    //}
+        return Ok(data);
+    }
 }
