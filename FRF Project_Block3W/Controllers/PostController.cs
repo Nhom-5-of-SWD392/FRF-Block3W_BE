@@ -74,7 +74,7 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("{id}/media")]
+    [HttpPost("{id}/medias")]
     public async Task<IActionResult> AddMediaAsync(Guid id, List<IFormFile> file)
     {
 
@@ -91,7 +91,7 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("{id}/ingredient")]
+    [HttpPost("{id}/ingredients")]
     public async Task<IActionResult> AddIngredientToPostAsync(Guid id, List<IngredientDetailModel> ingredients)
     {
         var result = await _postService.AddIngredientToPostAsync(id, ingredients);
