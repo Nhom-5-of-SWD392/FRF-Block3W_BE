@@ -25,22 +25,26 @@ public interface IPostService
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
     Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients);
+
+    Task<string> VerifyPost(bool isConfirm, Guid postId);
 }
 public class PostService : IPostService
 {
     private readonly DataContext _dataContext;
     private readonly IMapper _mapper;   
-    private readonly ICloudinaryService _cloudinaryService;
+    private readonly IUserService _userService;
+	private readonly ICloudinaryService _cloudinaryService;
     private readonly IFilterHelper<Post>_filterPostHelper;
 
-    public PostService(DataContext dataContext, IMapper mapper, ICloudinaryService cloudinaryService, IFilterHelper<Post> filterPostHelper)
+    public PostService(DataContext dataContext, IMapper mapper, ICloudinaryService cloudinaryService, IFilterHelper<Post> filterPostHelper, IUserService userService)
     {
         _dataContext = dataContext;
         _mapper = mapper;
         _filterPostHelper = filterPostHelper;
 		_cloudinaryService = cloudinaryService;
+		_userService = userService;
 
-    }
+	}
 
     public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
     {
@@ -206,7 +210,7 @@ public class PostService : IPostService
 					filters.Add("Status", query.Status.ToString());
 				}
 
-				queryable = _filterPostHelper.ApplyFilterRequest(queryable, filters);
+				queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
 
 				var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
@@ -612,4 +616,44 @@ public class PostService : IPostService
 			throw new Exception("An error occurred while fetching approved posts.");
 		}
 	}
+
+	public async Task<string> VerifyPost(bool isConfirm, Guid postId)
+	{
+        try
+        {
+			User user = await _userService.GetById(postId);
+			if (user==null)
+			{
+				throw new AppException(ErrorMessage.UserNotFound);
+			}
+
+            if (user.IsModerator == false || user.Role!=UserRole.Administrator)
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+			}
+
+            var post = await GetById(postId);
+
+			if (post == null)
+			{
+				throw new AppException(ErrorMessage.PostNotFound);
+			}
+
+            post.Status = isConfirm ? PostStatus.Approved : PostStatus.Rejected;
+            post.ComfirmById = user.Id;
+
+            _dataContext.Post.Update(post);  
+			await _dataContext.SaveChangesAsync();
+
+			return $"Status of Post {postId.ToString()} is now {post.Status}";
+		}
+        catch (Exception e)
+        {
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+			
+        }
+	}
+
+	
 }

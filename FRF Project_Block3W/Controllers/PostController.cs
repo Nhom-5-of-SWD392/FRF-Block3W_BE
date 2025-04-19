@@ -11,9 +11,12 @@ namespace FRF_Project_Block3W.Controllers;
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
-	public PostController(IPostService postService)
+    private readonly IUserService _userService;
+
+	public PostController(IPostService postService, IUserService userService)
 	{
 		_postService = postService;
+        _userService= userService;
 	}
 
     [HttpGet("public")]
@@ -42,11 +45,21 @@ public class PostController : ControllerBase
 		return Ok(result);
 	}
 
-	[HttpPatch("id")]
+	[HttpPatch("{id}/softDelete")]
 	public async Task<IActionResult> SoftDelete(Guid id)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
 		var data = await _postService.SoftDelete(userId, id);
+
+		return Ok(data);
+	}
+
+	[HttpPatch("{id}/verify")]
+	public async Task<IActionResult> VerifyPost(Guid id,bool isConfirm)
+	{
+        var userId = new Guid(User.Claims.GetUserIdFromJwtToken());
+
+		var data = await _postService.VerifyPost(isConfirm, id);
 
 		return Ok(data);
 	}
