@@ -18,7 +18,7 @@ public static class UserClaims
 
     public static string GetUserRoleFromJwtToken(this IEnumerable<Claim> claims)
     {
-        var userId = claims.FirstOrDefault(claims => claims.Type == ClaimTypes.Role)?.Value;
-        return userId ?? "";
+        var role = claims.FirstOrDefault(claims => claims.Type == ClaimTypes.Role)?.Value;
+        return role ?? "";
     }
 }

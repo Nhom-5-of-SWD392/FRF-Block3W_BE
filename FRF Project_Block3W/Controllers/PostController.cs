@@ -36,8 +36,8 @@ public class PostController : ControllerBase
 	public async Task<IActionResult> GetAllPostByUser([FromQuery]PostQueryModel query)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
-
-		var result = await _postService.GetAllPostByUser(query,userId);
+        var role = User.Claims.GetUserRoleFromJwtToken();
+		var result = await _postService.GetAllPostByUser(query,userId,role);
 
 		return Ok(result);
 	}

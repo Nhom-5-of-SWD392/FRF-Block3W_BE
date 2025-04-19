@@ -45,6 +45,7 @@ public class PostQueryModel : QueryStringParameters
 		
 	}
 
+	public PostStatus? Status { get; set; }
 	public string? Search { get; set; }
 }
 

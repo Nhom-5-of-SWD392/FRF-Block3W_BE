@@ -60,9 +60,10 @@ public static class ServiceExtension
 
 		//Post
 		services.AddScoped<IPostService, PostService>();
-        
-        //Media
-        services.AddScoped<IMediaService, MediaService>();
+		services.AddScoped<IFilterHelper<Post>, FilterHelper<Post>>();
+
+		//Media
+		services.AddScoped<IMediaService, MediaService>();
 
         //Instruction
         services.AddScoped<IInstructionService, InstructionService>();

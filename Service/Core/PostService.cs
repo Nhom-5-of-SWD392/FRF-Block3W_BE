@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CloudinaryDotNet.Actions;
 using Data.EFCore;
 using Data.Entities;
 using Data.Enum;
@@ -7,12 +8,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Service.Utilities;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Service.Core;
 
 public interface IPostService
 {
-	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId);
+	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId, string role);
 	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
 	Task<Post> GetById (Guid id);
 	Task<Guid> SoftDelete(string userId,Guid id);
@@ -27,16 +29,17 @@ public interface IPostService
 public class PostService : IPostService
 {
     private readonly DataContext _dataContext;
-    private readonly IMapper _mapper;
-    private readonly ISortHelpers<Topic> _sortHelpers;
+    private readonly IMapper _mapper;   
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IFilterHelper<Post>_filterPostHelper;
 
-    public PostService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers, ICloudinaryService cloudinaryService)
+    public PostService(DataContext dataContext, IMapper mapper, ICloudinaryService cloudinaryService, IFilterHelper<Post> filterPostHelper)
     {
         _dataContext = dataContext;
         _mapper = mapper;
-        _sortHelpers = sortHelpers;
-        _cloudinaryService = cloudinaryService;
+        _filterPostHelper = filterPostHelper;
+		_cloudinaryService = cloudinaryService;
+
     }
 
     public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
@@ -179,46 +182,96 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId)
+    public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId, string role)
     {
         try
         {
-            if (String.IsNullOrEmpty(userId))
+            if (string.IsNullOrEmpty(userId)&&string.IsNullOrEmpty(role))
             {
                 throw new AppException(ErrorMessage.Unauthorize);
             }
 
-            var queryable = _dataContext.Post
-                .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-                .AsQueryable();
-
-            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-
-            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
-
-            var postView = data.Select(post =>
+            if (role==UserRole.Administrator.ToString())
             {
-                var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+                var queryable = _dataContext.Post
+					.Where(p => !p.IsDeleted)					
+					.AsQueryable();
 
-				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+				queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+				var filters = new Dictionary<string, string>();
+
+				if (query.Status.HasValue)
 				{
-					Id = pt.Id,
-					Name = pt.Topic?.Name
+					filters.Add("Status", query.Status.ToString());
+				}
 
-				}).ToList() ?? new List<TopicViewModel>();
+				queryable = _filterPostHelper.ApplyFilterRequest(queryable, filters);
 
-				return postViewModel;
-            }).ToList();
+				var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-            var pagingData = new PagingModel<PostViewModel>()
+				var postView = data.Select(post =>
+				{
+					var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+
+					postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+					{
+						Id = pt.Id,
+						Name = pt.Topic?.Name
+
+					}).ToList() ?? new List<TopicViewModel>();
+
+					return postViewModel;
+				}).ToList();
+
+				var adminPagingData = new PagingModel<PostViewModel>()
+				{
+					PageIndex = data.CurrentPage,
+					PageSize = data.PageSize,
+					TotalCount = data.TotalCount,
+					TotalPages = data.TotalPages,
+					pagingData = postView
+				};
+				return adminPagingData;
+			}
+            else
             {
-                PageIndex = data.CurrentPage,
-                PageSize = data.PageSize,
-                TotalCount = data.TotalCount,
-                TotalPages = data.TotalPages,
-                pagingData = postView
-            };
-            return pagingData;
+				var queryable = _dataContext.Post
+				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
+				.AsQueryable();
+
+				queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+
+				var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+				var postView = data.Select(post =>
+				{
+					var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+
+					postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+					{
+						Id = pt.Id,
+						Name = pt.Topic?.Name
+
+					}).ToList() ?? new List<TopicViewModel>();
+
+					return postViewModel;
+				}).ToList();
+
+				var memberPagingData = new PagingModel<PostViewModel>()
+				{
+					PageIndex = data.CurrentPage,
+					PageSize = data.PageSize,
+					TotalCount = data.TotalCount,
+					TotalPages = data.TotalPages,
+					pagingData = postView
+				};
+				return memberPagingData;
+			}
+
+            
+            
         }
         catch (Exception e)
         {
@@ -254,7 +307,7 @@ public class PostService : IPostService
 		{
 			try
 			{
-				if (String.IsNullOrEmpty(userId))
+				if (string.IsNullOrEmpty(userId))
 				{
 					throw new AppException(ErrorMessage.Unauthorize);
 				}
@@ -291,7 +344,7 @@ public class PostService : IPostService
 	{
 		try
 		{
-			if (String.IsNullOrEmpty(userId))
+			if (string.IsNullOrEmpty(userId))
 			{
 				throw new AppException(ErrorMessage.Unauthorize);
 			}
