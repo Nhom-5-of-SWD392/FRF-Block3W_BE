@@ -11,12 +11,12 @@ namespace FRF_Project_Block3W.Controllers;
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
-    private readonly IUserService _userService;
+    
 
-	public PostController(IPostService postService, IUserService userService)
+	public PostController(IPostService postService)
 	{
 		_postService = postService;
-        _userService= userService;
+       
 	}
 
     [HttpGet("public")]

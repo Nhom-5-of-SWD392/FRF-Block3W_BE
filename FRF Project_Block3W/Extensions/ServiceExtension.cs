@@ -71,7 +71,11 @@ public static class ServiceExtension
         //Ingredient
         services.AddScoped<IIngredientService, IngredientService>();
 
-    }
+        //Reaction
+        services.AddScoped<IReactionService, ReactionService>();
+        
+
+	}
 
     public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
     {

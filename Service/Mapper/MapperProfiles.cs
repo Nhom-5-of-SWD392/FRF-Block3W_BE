@@ -33,6 +33,10 @@ public class MapperProfiles : Profile
 		//Post
 		CreateMap<PostCreateModel, Post>();
 		CreateMap<Post, PostViewModel>();
-		
+
+		//Reaction
+		CreateMap<ReactionCreateModel, Reaction>();
+		CreateMap<Reaction, ReactionViewModel>();
+
 	}
 }
