@@ -60,7 +60,7 @@ public static class ServiceExtension
 
 		//Post
 		services.AddScoped<IPostService, PostService>();
-
+        
         //Media
         services.AddScoped<IMediaService, MediaService>();
 

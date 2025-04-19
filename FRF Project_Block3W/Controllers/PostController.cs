@@ -24,7 +24,15 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet]
+	[HttpGet("pending")]
+	public async Task<IActionResult> GetAllPendingPostsAsync([FromQuery] PostQueryModel query)
+	{
+		var result = await _postService.GetAllPendingPostsAsync(query);
+
+		return Ok(result);
+	}
+
+	[HttpGet]
 	public async Task<IActionResult> GetAllPostByUser([FromQuery]PostQueryModel query)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();

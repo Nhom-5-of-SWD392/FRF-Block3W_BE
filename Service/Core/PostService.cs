@@ -17,7 +17,8 @@ public interface IPostService
 	Task<Guid> SoftDelete(string userId,Guid id);
 	Task<Guid> HardDelete(string userId,Guid id);
     Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostQueryModel query);
-    Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
+    Task<PagingModel<PostViewModel>> GetAllPendingPostsAsync(PostQueryModel query);
+	Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
 }
@@ -411,4 +412,47 @@ public class PostService : IPostService
 
         return "Instruction Added!";
     }
+
+	public async Task<PagingModel<PostViewModel>> GetAllPendingPostsAsync(PostQueryModel query)
+	{
+		try
+		{
+			var queryable = _dataContext.Post
+				.Where(p => !p.IsDeleted && p.Status == PostStatus.Pending)
+				.Include(p => p.PostTopic)
+				.AsQueryable();
+
+			queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+			var postView = data.Select(post =>
+			{
+				var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+
+				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+				{
+					Id = pt.Id,					
+					Name = pt.Topic?.Name
+					// Include other needed properties but exclude any Post references
+				}).ToList() ?? new List<TopicViewModel>();
+
+				return postViewModel;
+			}).ToList();
+
+			return new PagingModel<PostViewModel>
+			{
+				PageIndex = data.CurrentPage,
+				PageSize = data.PageSize,
+				TotalCount = data.TotalCount,
+				TotalPages = data.TotalPages,
+				pagingData = postView
+			};
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception("An error occurred while fetching approved posts.");
+		}
+	}
 }
