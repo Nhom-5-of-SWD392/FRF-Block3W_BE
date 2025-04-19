@@ -67,6 +67,9 @@ public static class ServiceExtension
         //Instruction
         services.AddScoped<IInstructionService, InstructionService>();
 
+        //Ingredient
+        services.AddScoped<IIngredientService, IngredientService>();
+
     }
 
     public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)

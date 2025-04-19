@@ -126,6 +126,24 @@ public class QuizService : IQuizService
 
                 await _dataContext.Quiz.AddAsync(quizData);
 
+                foreach (var range in model.QuizRangeScore)
+                {
+                    if (range.MinScore > range.MaxScore)
+                        throw new AppException(ErrorMessage.MinCantGreaterMax);
+
+                    var rangeScore = new QuizRangeScore
+                    {
+                        MinScore = range.MinScore,
+                        MaxScore = range.MaxScore,
+                        Result = range.Result,
+                        QuizId = quizData.Id
+                    };
+
+                    await _dataContext.QuizRangeScore.AddAsync(rangeScore);
+
+                    rangeScore.CreatedBy = new Guid(userId);
+                }
+
                 foreach (var questionModel in model.Questions)
                 {
                     if (newQuiz.Type == QuizType.Quiz && questionModel.Type != QuestionType.MultipleChoice)
@@ -432,12 +450,13 @@ public class QuizService : IQuizService
                     QuizMadeById = new Guid(userId),
                     FinalScore = quiz.Type == QuizType.Quiz ? totalScore : 0,
                     Status = quiz.Type == QuizType.Quiz ? QuizResultStatus.Completed : QuizResultStatus.Pending,
-                    Result = quiz.Type == QuizType.Quiz ? GetRangeScore(quiz.QuizRangeScores!, totalScore) : RangeScoreResult.None,
+                    Result = quiz.Type == QuizType.Quiz ? GetRangeScore(quiz.QuizRangeScores!, totalScore) : "Waiting for review...",
                     CreatedBy = new Guid(userId),
                     QuizDetails = quizDetails
                 };
 
                 await _dataContext.QuizResult.AddAsync(result);
+
                 await _dataContext.SaveChangesAsync();
 
                 await transaction.CommitAsync();
@@ -636,6 +655,20 @@ public class QuizService : IQuizService
             result.Status = QuizResultStatus.Completed;
             result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
 
+            var maxTotalScore = result.QuizDetails!
+            .Sum(d => _dataContext.QuizAnswer
+                .Where(a => a.QuizQuestionId == d.QuizQuestionId)
+                .Max(a => (double?)a.Score) ?? 0);
+
+            if (maxTotalScore > 0 && finalScore > maxTotalScore * 0.5)
+            {
+                var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.QuizMadeById);
+                if (user != null)
+                {
+                    user.IsModerator = true;
+                }
+            }
+
             await _dataContext.SaveChangesAsync();
 
             return "Save evaluate successfully!";
@@ -649,7 +682,7 @@ public class QuizService : IQuizService
 
 
     //private method
-    private RangeScoreResult GetRangeScore(IEnumerable<QuizRangeScore> scores, double score)
+    private string GetRangeScore(IEnumerable<QuizRangeScore> scores, double score)
     {
         foreach (var range in scores)
         {
@@ -658,7 +691,7 @@ public class QuizService : IQuizService
                 return range.Result;
             }
         }
-        return RangeScoreResult.Bad;
+        return "Not in range";
     }
 
 }

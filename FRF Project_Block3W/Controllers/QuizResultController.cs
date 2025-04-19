@@ -1,10 +1,12 @@
 ﻿using Data.Models;
 using FRF_Project_Block3W.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
 namespace FRF_Project_Block3W.Controllers;
 
+[Authorize]
 [Route("api/quiz-result")]
 [ApiController]
 public class QuizResultController : ControllerBase
@@ -36,6 +38,7 @@ public class QuizResultController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize("Administrator")]
     [HttpPost("evaluate")]
     public async Task<IActionResult> EvaluateInterviewAsync([FromBody] EvaluateEssayRequest model)
     {

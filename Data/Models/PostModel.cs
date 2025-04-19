@@ -1,5 +1,6 @@
 ﻿using Data.Entities;
 using Data.Enum;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +24,7 @@ public class PostCreateModel
 	public string? Title { get; set; }
 	public string? Content { get; set; }
 	public List<TopicAddToPostModel> Topics { get; set; } = new();
+	public List<IFormFile>? Media { get; set; }
 }
 
 public class PostDetailModel : BaseModel

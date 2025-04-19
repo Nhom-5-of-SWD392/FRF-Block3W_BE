@@ -8,7 +8,7 @@ public class QuizResult : BaseEntities
 {
     public double FinalScore { get; set; }
     [Required(ErrorMessage = "Result is required")]
-    public RangeScoreResult Result { get; set; }
+    public string Result { get; set; } = string.Empty;
     public QuizResultStatus Status { get; set; } = QuizResultStatus.Pending;
 
     //Foreign Keys

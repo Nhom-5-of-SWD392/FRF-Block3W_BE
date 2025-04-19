@@ -6,7 +6,7 @@ public class QuizRangeScoreCreateModel
 {
     public int MinScore { get; set; } = 0;
     public int MaxScore { get; set; } = 0;
-    public RangeScoreResult Result { get; set; }
+    public string Result { get; set; } = string.Empty;
 }
 
 

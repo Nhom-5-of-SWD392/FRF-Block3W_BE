@@ -13,7 +13,7 @@ public class QuizResultQueryModel : QueryStringParameters
 public class QuizResultView : BaseModel
 {
     public QuizzModel Quizz { get; set; } = new ();
-    public RangeScoreResult Result { get; set; }
+    public string Result { get; set; } = string.Empty;
     public QuizResultStatus Status { get; set; }
     public double FinalScore { get; set; }
     public List<QuizResultDetail> Details { get; set; } = new ();
