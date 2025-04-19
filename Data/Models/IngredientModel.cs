@@ -36,3 +36,4 @@ public class IngredientQueryModel : QueryStringParameters
 	}
 	public string? Search { get; set; }
 }
+

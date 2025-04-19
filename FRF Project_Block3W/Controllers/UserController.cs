@@ -61,20 +61,6 @@ public class UserController : ControllerBase
         return Ok(result);
     }
 
-
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromForm] RegisterUserModel model)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest();
-        }
-
-        var result = await _userService.RegisterAsync(model);
-
-        return Ok(result);
-    }
-
     [HttpPost("register-moderator")]
     public async Task<IActionResult> RegisterModerator()
     {

@@ -61,7 +61,7 @@ public class PostController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreatePostWithMedia([FromBody] PostCreateModel model)
+    public async Task<IActionResult> CreatePostWithMedia([FromForm] PostCreateModel model)
     {
         if (!ModelState.IsValid)
         {
@@ -87,6 +87,14 @@ public class PostController : ControllerBase
     public async Task<IActionResult> AddInstructionToPostAsync(Guid id, InstructionRequestModel instructions)
     {
         var result = await _postService.AddInstructionToPostAsync(id, instructions);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/ingredient")]
+    public async Task<IActionResult> AddIngredientToPostAsync(Guid id, List<IngredientDetailModel> ingredients)
+    {
+        var result = await _postService.AddIngredientToPostAsync(id, ingredients);
 
         return Ok(result);
     }

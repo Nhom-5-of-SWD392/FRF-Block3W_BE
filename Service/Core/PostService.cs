@@ -5,6 +5,7 @@ using Data.Enum;
 using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Service.Utilities;
 
 namespace Service.Core;
@@ -20,6 +21,7 @@ public interface IPostService
     Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
+    Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients);
 }
 public class PostService : IPostService
 {
@@ -76,6 +78,44 @@ public class PostService : IPostService
                     if (existingTopicIds.Count != model.Topics.Count)
                     {
                         throw new AppException(ErrorMessage.TopicNotExist);
+                    }
+                }
+
+                if (model.Media != null && model.Media.Count > 0)
+                {
+                    foreach (var file in model.Media!)
+                    {
+                        var contentType = file.ContentType.ToLower();
+                        MediaType mediaType;
+
+                        if (contentType.StartsWith("image/"))
+                        {
+                            mediaType = MediaType.Image;
+                        }
+                        else if (contentType.StartsWith("video/"))
+                        {
+                            mediaType = MediaType.Video;
+                        }
+                        else
+                        {
+                            throw new AppException(ErrorMessage.UnsupportedFile);
+                        }
+
+                        string path = mediaType == MediaType.Image ? $"{postData.Id}/images" : $"{postData.Id}/videos";
+
+                        string url = mediaType == MediaType.Image
+                            ? await _cloudinaryService.UploadImageAsync(file, path)
+                            : await _cloudinaryService.UploadVideoAsync(file, path);
+
+                        var media = new Media
+                        {
+                            Url = url,
+                            Type = mediaType,
+                            PostId = postData.Id,
+                            CreatedBy = postData.CreatedBy,
+                        };
+
+                        await _dataContext.Media.AddAsync(media);
                     }
                 }
 
@@ -280,7 +320,9 @@ public class PostService : IPostService
 
     public async Task<PostDetailResponse> GetPostDetailAsync(Guid postId)
     {
-        var post = await _dataContext.Post
+        try
+        {
+            var post = await _dataContext.Post
             .Include(p => p.PostBy)!
             .Include(p => p.PostIngredients)!
                 .ThenInclude(pi => pi.Ingredient)!
@@ -290,125 +332,186 @@ public class PostService : IPostService
             .Include(p => p.Instructions)
             .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
 
-        if (post == null)
-            throw new AppException(ErrorMessage.PostNotFound);
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
 
-        var response = new PostDetailResponse
+            var response = new PostDetailResponse
+            {
+                Id = post.Id,
+                Title = post.Title,
+                Content = post.Content,
+                Status = post.Status.ToString(),
+                PostByName = post.PostBy?.FirstName + " " + post.PostBy?.LastName ?? "Unknown",
+
+                Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
+                {
+                    Id = pi.Id,
+                    Name = pi.Ingredient?.Name ?? "Unknown",
+                    Quantity = pi.Quantity,
+                    Unit = pi.Unit
+                }).ToList() ?? new(),
+
+                Topics = post.PostTopic?.Select(pt => pt.Topic?.Name ?? "Unnamed Topic").ToList() ?? new(),
+
+                MediaUrls = post.Medias?.Select(m => new MediaResponse
+                {
+                    Id = m.Id,
+                    Url = m.Url,
+                    Type = m.Type
+                }).ToList() ?? new(),
+
+                Instructions = post.Instructions?.OrderBy(i => i.CreatedAt).Select(i => new InstructionResponse
+                {
+                    Id = i.Id,
+                    Content = i.Content,
+                    ImageUrl = i.ImageUrl
+                }).ToList() ?? new()
+            };
+
+            return response;
+        }
+        catch (Exception e)
         {
-            Id = post.Id,
-            Title = post.Title,
-            Content = post.Content,
-            Status = post.Status.ToString(),
-            PostByName = post.PostBy?.FirstName + " " + post.PostBy?.LastName ?? "Unknown",
-
-            Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
-            {
-                Id = pi.Id,
-                Name = pi.Ingredient?.Name ?? "Unknown",
-                Quantity = pi.Quantity,
-                Unit = pi.Unit
-            }).ToList() ?? new(),
-
-            Topics = post.PostTopic?.Select(pt => pt.Topic?.Name ?? "Unnamed Topic").ToList() ?? new(),
-
-            MediaUrls = post.Medias?.Select(m => new MediaResponse
-            {
-                Id = m.Id,
-                Url = m.Url,
-                Type = m.Type
-            }).ToList() ?? new(),
-
-            Instructions = post.Instructions?.OrderBy(i => i.CreatedAt).Select(i => new InstructionResponse
-            {
-                Id = i.Id,
-                Content = i.Content,
-                ImageUrl = i.ImageUrl
-            }).ToList() ?? new()
-        };
-
-        return response;
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
     }
 
     public async Task<string> AddMediaAsync(Guid postId, List<IFormFile> files)
     {
-        var post = await _dataContext.Post
-            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
-        if (post == null)
-            throw new AppException(ErrorMessage.PostNotFound);
-
-        var urls = new List<string>();
-
-        foreach (var file in files)
+        try
         {
-            var contentType = file.ContentType.ToLower();
-            MediaType mediaType;
+            var post = await _dataContext.Post
+            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
 
-            if (contentType.StartsWith("image/"))
+            foreach (var file in files)
             {
-                mediaType = MediaType.Image;
+                var contentType = file.ContentType.ToLower();
+                MediaType mediaType;
+
+                if (contentType.StartsWith("image/"))
+                {
+                    mediaType = MediaType.Image;
+                }
+                else if (contentType.StartsWith("video/"))
+                {
+                    mediaType = MediaType.Video;
+                }
+                else
+                {
+                    throw new AppException(ErrorMessage.UnsupportedFile);
+                }
+
+                string path = mediaType == MediaType.Image ? $"{postId}/images" : $"{postId}/videos";
+
+                string url = mediaType == MediaType.Image
+                    ? await _cloudinaryService.UploadImageAsync(file, path)
+                    : await _cloudinaryService.UploadVideoAsync(file, path);
+
+                var media = new Media
+                {
+                    Url = url,
+                    Type = mediaType,
+                    PostId = postId,
+                    CreatedBy = post.CreatedBy,
+                };
+
+                await _dataContext.Media.AddAsync(media);
             }
-            else if (contentType.StartsWith("video/"))
-            {
-                mediaType = MediaType.Video;
-            }
-            else
-            {
-                throw new AppException(ErrorMessage.UnsupportedFile);
-            }
 
-            string path = mediaType == MediaType.Image ? $"{postId}/images" : $"{postId}/videos";
+            await _dataContext.SaveChangesAsync();
 
-            string url = mediaType == MediaType.Image
-                ? await _cloudinaryService.UploadImageAsync(file, path)
-                : await _cloudinaryService.UploadVideoAsync(file, path);
-
-            var media = new Media
-            {
-                Url = url,
-                Type = mediaType,
-                PostId = postId,
-                CreatedBy = post.CreatedBy,
-            };
-
-            await _dataContext.Media.AddAsync(media);
-
-            urls.Add(url);
+            return "Uploaded!";
         }
-
-        await _dataContext.SaveChangesAsync();
-
-        return "Uploaded!";
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
     }
 
     public async Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction)
     {
-        var post = await GetById(postId);
-
-        string? imageUrl = null;
-        string path = $"{postId}/instructions";
-
-        if (instruction.Image != null)
+        try
         {
-            if (!instruction.Image.ContentType.StartsWith("image/"))
+            var post = await GetById(postId);
+
+            string? imageUrl = null;
+            string path = $"{postId}/instructions";
+
+            if (instruction.Image != null)
             {
-                throw new AppException(ErrorMessage.OnlyAllowImage);
+                if (!instruction.Image.ContentType.StartsWith("image/"))
+                {
+                    throw new AppException(ErrorMessage.OnlyAllowImage);
+                }
+
+                imageUrl = await _cloudinaryService.UploadImageAsync(instruction.Image, path);
             }
 
-            imageUrl = await _cloudinaryService.UploadImageAsync(instruction.Image, path);
+            var newInstruction = new Instruction
+            {
+                PostId = postId,
+                Content = instruction.Content,
+                ImageUrl = imageUrl,
+                CreatedBy = post.CreatedBy
+            };
+
+            await _dataContext.Instruction.AddAsync(newInstruction);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Instruction Added!";
         }
-
-        var newInstruction = new Instruction
+        catch (Exception e)
         {
-            PostId = postId,
-            Content = instruction.Content,
-            ImageUrl = imageUrl,
-            CreatedBy = post.CreatedBy
-        };
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
 
-        await _dataContext.Instruction.AddAsync(newInstruction);
+    public async Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients)
+    {
+        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+        {
+            try
+            {
+                var post = await GetById(postId);
 
-        await _dataContext.SaveChangesAsync();
+                foreach (var item in ingredients)
+                {
+                    var newIngredient = new Ingredient
+                    {
+                        Name = item.Name,
+                        CreatedBy = post.CreatedBy
+                    };
 
-        return "Instruction Added!";
+                    await _dataContext.Ingredient.AddAsync(newIngredient);
+
+                    var postIngredient = new PostIngredient
+                    {
+                        PostId = postId,
+                        IngredientId = newIngredient.Id,
+                        Quantity = item.Quantity,
+                        Unit = item.Unit,
+                        CreatedBy = post.CreatedBy
+                    };
+                    await _dataContext.PostIngredient.AddAsync(postIngredient);
+                }
+
+                await _dataContext.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                return "Ingredients added successfully!";
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw new Exception(e.Message);
+            }
+        }
     }
 }

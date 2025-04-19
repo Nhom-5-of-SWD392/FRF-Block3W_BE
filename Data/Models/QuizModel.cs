@@ -33,6 +33,7 @@ public class CreateQuizRequest
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public QuizType Type { get; set; }
+    public List<QuizRangeScoreAddToQuiz> QuizRangeScore { get; set; } = new();
     public List<CreateQuizQuestionRequest> Questions { get; set; } = new();
 }
 
@@ -65,7 +66,7 @@ public class QuizRangeScoreResponse
     public Guid Id { get; set; }    
     public int MinScore { get; set; } = 0;
     public int MaxScore { get; set; } = 0;
-    public RangeScoreResult Result { get; set; }
+    public string Result { get; set; } = string.Empty;
 }
 
 public class QuizQuestionResponse
@@ -108,5 +109,12 @@ public class QuizResultDetails
 {
     public Guid? AnswerId { get; set; }
     public double EvaluationScore { get; set; }
+}
+
+public class QuizRangeScoreAddToQuiz
+{
+    public int MinScore { get; set; } = 0;
+    public int MaxScore { get; set; } = 0;
+    public string Result { get; set; } = string.Empty;
 }
 
