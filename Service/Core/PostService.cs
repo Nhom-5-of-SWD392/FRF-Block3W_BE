@@ -153,9 +153,14 @@ public class PostService : IPostService
             {
                 var postViewModel = _mapper.Map<Post, PostViewModel>(post);
 
-                postViewModel.Topics = post.PostTopic?.ToList() ?? new List<PostTopic>();
+				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+				{
+					Id = pt.Id,
+					Name = pt.Topic?.Name
 
-                return postViewModel;
+				}).ToList() ?? new List<TopicViewModel>();
+
+				return postViewModel;
             }).ToList();
 
             return new PagingModel<PostViewModel>
@@ -191,22 +196,18 @@ public class PostService : IPostService
 
             var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-            var postView = data.Select(topic =>
+            var postView = data.Select(post =>
             {
-                var postViewModel = _mapper.Map<Post, PostViewModel>(topic);
+                var postViewModel = _mapper.Map<Post, PostViewModel>(post);
 
-                if (topic.PostTopic == null)
-                {
-                    postViewModel.Topics = new List<PostTopic>();
-                }
-                else
-                {
-                    postViewModel.Topics = topic.PostTopic.ToList();
-                }
+				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
+				{
+					Id = pt.Id,
+					Name = pt.Topic?.Name
 
+				}).ToList() ?? new List<TopicViewModel>();
 
-
-                return postViewModel;
+				return postViewModel;
             }).ToList();
 
             var pagingData = new PagingModel<PostViewModel>()
@@ -537,7 +538,7 @@ public class PostService : IPostService
 				{
 					Id = pt.Id,					
 					Name = pt.Topic?.Name
-					// Include other needed properties but exclude any Post references
+					
 				}).ToList() ?? new List<TopicViewModel>();
 
 				return postViewModel;
