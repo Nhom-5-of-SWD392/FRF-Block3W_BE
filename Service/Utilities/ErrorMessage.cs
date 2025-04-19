@@ -45,4 +45,5 @@ public static class ErrorMessage
     public static string NoVideo = "No Video uploaded";
     public static string UnsupportedFile = "Unsupported file type. Only images and videos are allowed.";
     public static string OnlyAllowImage = "Only image allowed.";
+	public static string OnlyAdminAndModerator = "Only Moderator or Admin can perform this operation";
 }

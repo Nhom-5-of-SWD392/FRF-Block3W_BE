@@ -26,7 +26,7 @@ public interface IPostService
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
     Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients);
 
-    Task<string> VerifyPost(bool isConfirm, Guid postId);
+    Task<string> VerifyPost(bool isConfirm, Guid postId,string userId);
 }
 public class PostService : IPostService
 {
@@ -617,19 +617,21 @@ public class PostService : IPostService
 		}
 	}
 
-	public async Task<string> VerifyPost(bool isConfirm, Guid postId)
+	public async Task<string> VerifyPost(bool isConfirm, Guid postId, string userId)
 	{
         try
         {
-			User user = await _userService.GetById(postId);
-			if (user==null)
+			
+			if (string.IsNullOrEmpty(userId))
 			{
-				throw new AppException(ErrorMessage.UserNotFound);
+				throw new AppException(ErrorMessage.Unauthorize);
 			}
 
-            if (user.IsModerator == false || user.Role!=UserRole.Administrator)
+			User user = await _userService.GetById(new Guid(userId));
+
+			if (user.IsModerator == false || user.Role!=UserRole.Administrator)
             {
-                throw new AppException(ErrorMessage.Unauthorize);
+                throw new AppException(ErrorMessage.OnlyAdminAndModerator);
 			}
 
             var post = await GetById(postId);

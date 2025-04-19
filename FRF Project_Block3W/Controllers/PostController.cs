@@ -57,9 +57,9 @@ public class PostController : ControllerBase
 	[HttpPatch("{id}/verify")]
 	public async Task<IActionResult> VerifyPost(Guid id,bool isConfirm)
 	{
-        var userId = new Guid(User.Claims.GetUserIdFromJwtToken());
+        var userId =User.Claims.GetUserIdFromJwtToken();
 
-		var data = await _postService.VerifyPost(isConfirm, id);
+		var data = await _postService.VerifyPost(isConfirm, id, userId);
 
 		return Ok(data);
 	}
