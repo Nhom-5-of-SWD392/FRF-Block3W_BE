@@ -73,11 +73,15 @@ public static class ServiceExtension
 
         //Reaction
         services.AddScoped<IReactionService, ReactionService>();
-        
+
+		//Favorite
+		services.AddScoped<IFavoriteService, FavoriteService>();
+		
+		
 
 	}
 
-    public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
+	public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
     {
         services
             .AddAuthentication(op =>

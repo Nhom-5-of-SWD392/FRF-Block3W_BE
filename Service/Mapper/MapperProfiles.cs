@@ -38,5 +38,9 @@ public class MapperProfiles : Profile
 		CreateMap<ReactionCreateModel, Reaction>();
 		CreateMap<Reaction, ReactionViewModel>();
 
+		//Favorite
+		CreateMap<FavoriteCreateModel, Favorite>();
+		CreateMap<Favorite, FavoriteViewModel>();
+
 	}
 }

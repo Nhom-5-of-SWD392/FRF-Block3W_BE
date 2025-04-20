@@ -38,8 +38,11 @@ public static class ErrorMessage
     public static string TopicNotFound = "Topic not found.";
     public static string TopicNotExist = "One or more topics do not exist in the system.";
 
-    //Others
-    public static string IdNotExist = "ID does not exist.";
+	//Favorite
+	public static string FavoriteNotFound = "Favorite not found.";
+
+	//Others
+	public static string IdNotExist = "ID does not exist.";
     public static string AccessTokenFail = "Access token failed!";
     public static string Unauthorize = "User is not authorized.";
     public static string NoVideo = "No Video uploaded";
