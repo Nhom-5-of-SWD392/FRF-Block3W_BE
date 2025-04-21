@@ -43,10 +43,7 @@ public class ReactionService : IReactionService
 
 				await _dataContext.Reaction.AddAsync(reaction);
 
-				//Add the reaction to the user
-
-				//Add the reaction to the comment
-
+	
 				await _dataContext.SaveChangesAsync();
 				await transaction.CommitAsync();
 

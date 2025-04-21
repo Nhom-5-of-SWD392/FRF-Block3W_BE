@@ -54,41 +54,8 @@ public class FavoriteService : IFavoriteService
 				favorite.UserId = new Guid(userId);
 				favorite.PostId = new Guid(model.PostId.ToString());
 
-
 				await _dataContext.Favorite.AddAsync(favorite);
-
-				//Add the favorite to the user
-				var user = await _userService.GetById(new Guid(userId));
-
-				if (user == null)
-				{
-					throw new Exception(ErrorMessage.UserNotFound);
-				}
-
-				if(user.Favorites == null)
-				{
-					user.Favorites = new List<Favorite>();
-				}
-
-				user.Favorites.Add(favorite);
-
-				_dataContext.User.Update(user);
-
-				//Add the post to the favorite
-				var post = await _postService.GetById(model.PostId);
-				if (post == null)
-				{
-					throw new Exception(ErrorMessage.PostNotFound);
-				}
-				//If list of post is null, create new
-				if (post.Favorites == null)
-				{
-					post.Favorites = new List<Favorite>();
-				}
-				post.Favorites.Add(favorite);
-
-				_dataContext.Post.Update(post);
-
+			
 				await _dataContext.SaveChangesAsync();
 				await transaction.CommitAsync();
 
