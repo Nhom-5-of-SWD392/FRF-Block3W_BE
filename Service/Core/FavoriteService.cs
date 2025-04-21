@@ -18,7 +18,7 @@ public interface IFavoriteService
 {
 	Task<Guid> CreateFavorite(FavoriteCreateModel model, string userId);
 	Task<Favorite> GetById(Guid id);
-	Task<FavoriteViewModel> GetFavoriteListByUser(FavoriteQueryModel model, string userId, string role);
+	Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel model, string userId, string role);
 
 }
 public class FavoriteService : IFavoriteService
@@ -80,6 +80,7 @@ public class FavoriteService : IFavoriteService
 				{
 					throw new Exception(ErrorMessage.PostNotFound);
 				}
+				//If list of post is null, create new
 				if (post.Favorites == null)
 				{
 					post.Favorites = new List<Favorite>();
@@ -125,7 +126,7 @@ public class FavoriteService : IFavoriteService
 
 	
 
-	public async Task<FavoriteViewModel> GetFavoriteListByUser(FavoriteQueryModel query, string userId, string role)
+	public async Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel query, string userId, string role)
 	{
 		try
 		{
@@ -142,19 +143,9 @@ public class FavoriteService : IFavoriteService
 
 			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-			var favoriteView = data.Select(post =>
-			{
-				var postViewModel = _mapper.Map<Post, PostViewModel>(post);
 
-				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
-				{
-					Id = pt.Id,
-					Name = pt.Topic?.Name
-
-				}).ToList() ?? new List<TopicViewModel>();
-
-				return postViewModel;
-			}).ToList();
+			//Convert Favorite to FavoriteViewModel using var data variable
+			var favoriteView = _mapper.Map<List<Favorite>, List<FavoriteViewModel>>(data.ToList());
 
 			var pagingData = new PagingModel<FavoriteViewModel>()
 			{
@@ -162,14 +153,9 @@ public class FavoriteService : IFavoriteService
 				PageSize = data.PageSize,
 				TotalCount = data.TotalCount,
 				TotalPages = data.TotalPages,
-				pagingData = postView
+				pagingData = favoriteView
 			};
 			return pagingData;
-
-
-
-
-
 
 		}
 		catch (Exception e)
