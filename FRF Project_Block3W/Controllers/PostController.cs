@@ -1,5 +1,6 @@
 ﻿using Data.Models;
 using FRF_Project_Block3W.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
@@ -116,6 +117,29 @@ public class PostController : ControllerBase
     public async Task<IActionResult> AddIngredientToPostAsync(Guid id, List<IngredientDetailModel> ingredients)
     {
         var result = await _postService.AddIngredientToPostAsync(id, ingredients);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/leave-comment")]
+    [Authorize(Roles = "Member, Administrator")]
+    public async Task<IActionResult> LeaveComment(Guid id, [FromBody] CommentCreateModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _postService.AddCommentAsync(userId, id, model);
+
+        return Ok(result);
+    }
+
+    [HttpGet("{id}/comments")]
+    public async Task<IActionResult> GetPostComments(Guid id)
+    {
+        var result = await _postService.GetCommentsByPostIdAsync(id);
 
         return Ok(result);
     }

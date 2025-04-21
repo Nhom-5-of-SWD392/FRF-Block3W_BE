@@ -18,19 +18,27 @@ public interface IEmailService
 
 public class EmailService : IEmailService
 {
+    private readonly ISmtpClient _smtpClient;
     private readonly IConfiguration _configuration;
     private readonly MailSetupModel _mailSetup;
     private readonly DataContext _dataContext;
     private readonly IMapper _mapper;
     private readonly IServiceProvider _serviceProvider;
 
-    public EmailService(IConfiguration configuration, IOptions<MailSetupModel> mailSetup, DataContext dataContext, IMapper mapper, IServiceProvider serviceProvider)
+    public EmailService(
+            IConfiguration configuration, 
+            IOptions<MailSetupModel> mailSetup, 
+            DataContext dataContext, 
+            IMapper mapper, 
+            IServiceProvider serviceProvider, 
+            ISmtpClient smtpClient)
     {
         _configuration = configuration;
         _mailSetup = mailSetup.Value;
         _dataContext = dataContext;
         _mapper = mapper;
         _serviceProvider = serviceProvider;
+        _smtpClient = smtpClient;
     }
 
     public async Task SendResetPasswordEmailAsync(User user, string email, string resetLink)
@@ -103,21 +111,12 @@ public class EmailService : IEmailService
                                             This is an automated email. Please do not reply to this email.
                                         </div>
                                     </div>
-
                                 "
             };
 
             message.Body = builder.ToMessageBody();
 
-            using var smtpClient = new SmtpClient();
-
-            await smtpClient.ConnectAsync(_mailSetup.SmtpServer, _mailSetup.SmtpPort, SecureSocketOptions.StartTls);
-
-            await smtpClient.AuthenticateAsync(_mailSetup.FromEmail, _mailSetup.Password);
-
-            await smtpClient.SendAsync(message);
-
-            await smtpClient.DisconnectAsync(true);
+            await _smtpClient.SendEmailAsync(message);
         }
         catch (Exception ex)
         {

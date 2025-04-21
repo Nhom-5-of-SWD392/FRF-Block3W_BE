@@ -15,9 +15,13 @@ public class Comment : BaseEntities
 	public Comment? ParentComment { get; set; } 
 
 	[ForeignKey("PostId")]
-	public Post? Post { get; set; }
+    public Guid PostId { get; set; }
+    public Post? Post { get; set; }
+
 	[ForeignKey("UserId")]
-	public User? User { get; set; }
+    public Guid UserId { get; set; }
+    public User? User { get; set; }
 
 	public ICollection<Reaction>? Reactions { get; set; }
+    public ICollection<Comment>? ChildComments { get; set; }
 }

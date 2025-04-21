@@ -39,7 +39,15 @@ public class TopicController : ControllerBase
 		return Ok(data);
 	}
 
-	[HttpPut("id")]
+    [HttpGet("{id}/posts")]
+    public async Task<IActionResult> GetPostsByTopicAsync(Guid id)
+    {
+        var data = await _topicService.GetPostsByTopicAsync(id);
+
+        return Ok(data);
+    }
+
+    [HttpPut("id")]
 	public async Task<IActionResult> UpdateTopic(Guid id, [FromBody] TopicUpdateModel model)
 	{
 		if (!ModelState.IsValid)

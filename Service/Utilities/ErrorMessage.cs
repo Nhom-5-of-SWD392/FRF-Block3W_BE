@@ -41,8 +41,15 @@ public static class ErrorMessage
 	//Favorite
 	public static string FavoriteNotFound = "Favorite not found.";
 
-	//Others
-	public static string IdNotExist = "ID does not exist.";
+    //Comment
+    public static string OnlyMemberCanComment = "Only registered members can comment.";
+    public static string ParentCommentNotFound = "Parent comment not found.";
+    public static string CommentNotFound = "Comment not found.";
+    public static string OnlyUpdateOwnComment = "You can only edit your own comment.";
+    public static string OnlyDeleteOwnComment = "You can only delete your own comment.";
+
+    //Others
+    public static string IdNotExist = "ID does not exist.";
     public static string AccessTokenFail = "Access token failed!";
     public static string Unauthorize = "User is not authorized.";
     public static string NoVideo = "No Video uploaded";

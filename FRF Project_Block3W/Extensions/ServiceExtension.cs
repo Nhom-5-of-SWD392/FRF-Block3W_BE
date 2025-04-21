@@ -31,12 +31,11 @@ public static class ServiceExtension
 
     public static void AddBusinessServices(this IServiceCollection services)
     {
+        //3th Service
+        services.AddScoped<ISmtpClient, SmtpClientWrapper>();
         services.AddSingleton<ICloudinaryService, CloudinaryService>();
-
         services.AddScoped<IJwtUtils, JwtUtils>();
-
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
-
         services.AddScoped<IEmailService, EmailService>();
 
         //User
@@ -76,10 +75,16 @@ public static class ServiceExtension
 
 		//Favorite
 		services.AddScoped<IFavoriteService, FavoriteService>();
-		
-		
 
-	}
+        //Quiz Range Score
+        services.AddScoped<IRangeScoreService, RangeScoreService>();
+
+        //Quiz Range Score
+        services.AddScoped<ICommentService, CommentService>();
+
+
+
+    }
 
 	public static void ConfigureJWTToken(this IServiceCollection services, JwtModel? jwtModel, GoogleModel? googleModel)
     {

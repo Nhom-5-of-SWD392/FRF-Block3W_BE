@@ -29,6 +29,6 @@ public class ModeratorRequestController : ControllerBase
         var confirmedId = User.Claims.GetUserIdFromJwtToken();
 
         await _userService.ProcessModeratorApplicationAsync(confirmedId, requesterId, model);
-        return Ok("Approved");
+        return Ok("Approved!");
     }
 }

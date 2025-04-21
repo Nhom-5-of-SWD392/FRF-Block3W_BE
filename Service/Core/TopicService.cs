@@ -13,6 +13,7 @@ public interface ITopicService
 	Task<Guid> Create(string userId,TopicCreateModel model);
 	Task<Guid> Update(string userId,Guid id,TopicUpdateModel model);
 	Task<Guid> SoftDelete(Guid id);
+	Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
 }
 public class TopicService : ITopicService
 {
@@ -139,16 +140,12 @@ public class TopicService : ITopicService
 		try
 		{
 			if (string.IsNullOrEmpty(userId))
-			{
 				throw new AppException(ErrorMessage.Unauthorize);
-			}
 
 			var data = await GetById(id);
 
 			if (data == null)
-			{
 				throw new AppException(ErrorMessage.TopicNotFound);
-			}
 
 			var updateData = _mapper.Map(model,data);
 
@@ -167,9 +164,44 @@ public class TopicService : ITopicService
 		}
 	}
 
+    public async Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId)
+    {
+		try
+		{
+            var topic = await _dataContext.Topic
+				.Include(t => t.PostTopics!)
+					.ThenInclude(pt => pt.Post!)
+						.ThenInclude(p => p.PostBy)
+				.FirstOrDefaultAsync(t => t.Id == topicId);
 
-	//private method
-	private void SearchByKeyWord(ref IQueryable<Topic> topic, string keyword)
+            if (topic == null)
+                throw new AppException(ErrorMessage.TopicNotFound);
+
+            var result = new PostTopicResponse
+            {
+                Id = topic.Id,
+                Name = topic.Name,
+                Posts = topic.PostTopics!.Select(pt => new PostResponse
+                {
+                    Id = pt.Post!.Id,
+                    Title = pt.Post.Title,
+                    Content = pt.Post.Content,
+                    AuthorName = pt.Post.PostBy?.FirstName + pt.Post.PostBy?.LastName ?? "Anonymous"
+                }).ToList()
+            };
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
+
+    //private method
+    private void SearchByKeyWord(ref IQueryable<Topic> topic, string keyword)
 	{
 		if (!topic.Any() || string.IsNullOrWhiteSpace(keyword))
 			return;

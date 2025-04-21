@@ -27,13 +27,8 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromForm] RegisterUserModel model)
+    public async Task<IActionResult> Register([FromBody]RegisterUserModel model)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest();
-        }
-
         var result = await _userService.RegisterAsync(model);
 
         return Ok(result);

@@ -15,7 +15,6 @@ public class PostViewModel : BaseModel
 	public PostStatus? Status { get; set; }
 	public Guid PostById { get; set; }
 	public Guid? ConfirmBy { get; set; }
-	
 	public List<TopicViewModel> Topics { get; set; } = new();
 }
 

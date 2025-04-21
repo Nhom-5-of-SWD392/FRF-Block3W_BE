@@ -20,10 +20,10 @@ public interface IQuizService
     Task<Guid> AddQuizRangeScore(string userId, Guid quizId, List<QuizRangeScoreCreateModel> models);
     Task<Guid> SoftDelete(Guid id);
     Task<Guid> HardDelete(Guid id);
-    Task<string> SubmitQuizAsync(string userId, SubmitQuizRequest request);
+    Task<Guid> SubmitQuizAsync(string userId, SubmitQuizRequest request);
     Task<QuizResultView> GetQuizResultAsync(Guid quizResultId);
     Task<PagingModel<QuizResultView>> GetAllMyQuizResultsAsync(string userId, QuizResultQueryModel query, string role);
-    Task<string> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model);
+    Task<Guid> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model);
 
 }
 
@@ -390,7 +390,7 @@ public class QuizService : IQuizService
         }
     }
 
-    public async Task<string> SubmitQuizAsync(string userId, SubmitQuizRequest request)
+    public async Task<Guid> SubmitQuizAsync(string userId, SubmitQuizRequest request)
     {
         using (var transaction = await _dataContext.Database.BeginTransactionAsync())
         {
@@ -461,7 +461,7 @@ public class QuizService : IQuizService
 
                 await transaction.CommitAsync();
 
-                return "Submit successfuly!";
+                return result.Id;
             }
             catch (Exception e)
             {
@@ -597,94 +597,97 @@ public class QuizService : IQuizService
         }
     }
 
-    public async Task<string> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model)
+    public async Task<Guid> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model)
     {
-        try
+        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
         {
-            if (string.IsNullOrEmpty(evaluatorId))
+            try
             {
-                throw new AppException(ErrorMessage.Unauthorize);
-            }
-
-            var evaluatorGuid = new Guid(evaluatorId);
-
-            var result = await _dataContext.QuizResult
-                .Include(r => r.QuizDetails!)
-                    .ThenInclude(q => q.QuizQuestion)
-                        .ThenInclude(q => q.QuizAnswers)
-                .Include(r => r.Quiz)
-                    .ThenInclude(q => q.QuizRangeScores)
-                .FirstOrDefaultAsync(r => r.Id == model.QuizResultId);
-
-            if (result == null || result.Status != QuizResultStatus.Pending)
-                throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
-
-            double finalScore = 0;
-            foreach (var detail in result.QuizDetails!)
-            {
-                var question = detail.QuizQuestion;
-
-                if (question != null && question.Type == QuestionType.Essay)
+                if (string.IsNullOrEmpty(evaluatorId))
                 {
-                    if (!model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
-                    {
-                        throw new AppException(ErrorMessage.QuestionNotFound);
-                    }
-
-                    var maxScore = await _dataContext.QuizAnswer
-                        .Where(a => a.QuizQuestionId == detail.QuizQuestionId)
-                        .MaxAsync(a => (double?)a.Score) ?? 0;
-
-                    if (score > maxScore)
-                    {
-                        throw new AppException($"Score cannot exceed the maximum value of {maxScore} for this question");
-                    }
-
-                    detail.EvaluationScore = score;
-
-                    finalScore += score;
+                    throw new AppException(ErrorMessage.Unauthorize);
                 }
-                else
+
+                var evaluatorGuid = new Guid(evaluatorId);
+
+                var result = await _dataContext.QuizResult
+                    .Include(r => r.QuizDetails!)
+                        .ThenInclude(q => q.QuizQuestion)
+                            .ThenInclude(q => q.QuizAnswers)
+                    .Include(r => r.Quiz)
+                        .ThenInclude(q => q.QuizRangeScores)
+                    .FirstOrDefaultAsync(r => r.Id == model.QuizResultId);
+
+                if (result == null || result.Status != QuizResultStatus.Pending)
+                    throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
+
+                double finalScore = 0;
+                foreach (var detail in result.QuizDetails!)
                 {
-                    finalScore += detail.EvaluationScore;
+                    var question = detail.QuizQuestion;
+
+                    if (question != null && question.Type == QuestionType.Essay)
+                    {
+                        if (!model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
+                        {
+                            throw new AppException(ErrorMessage.QuestionNotFound);
+                        }
+
+                        var maxScore = await _dataContext.QuizAnswer
+                            .Where(a => a.QuizQuestionId == detail.QuizQuestionId)
+                            .MaxAsync(a => (double?)a.Score) ?? 0;
+
+                        if (score > maxScore)
+                        {
+                            throw new AppException($"Score cannot exceed the maximum value of {maxScore} for this question");
+                        }
+
+                        detail.EvaluationScore = score;
+
+                        finalScore += score;
+                    }
+                    else
+                    {
+                        finalScore += detail.EvaluationScore;
+                    }
                 }
-            }
 
-            result.FinalScore = finalScore;
-            result.EvaluateById = evaluatorGuid;
-            result.Status = QuizResultStatus.Completed;
-            result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
+                result.FinalScore = finalScore;
+                result.EvaluateById = evaluatorGuid;
+                result.Status = QuizResultStatus.Completed;
+                result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
 
-            var maxTotalScore = result.QuizDetails!
-            .Sum(d => _dataContext.QuizAnswer
-                .Where(a => a.QuizQuestionId == d.QuizQuestionId)
-                .Max(a => (double?)a.Score) ?? 0);
-
-            if (maxTotalScore > 0 && finalScore > maxTotalScore * 0.5)
-            {
                 var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.QuizMadeById);
                 if (user != null)
                 {
                     user.IsModerator = true;
+                    _dataContext.Update(user);
                 }
+                else
+                {
+                    throw new AppException(ErrorMessage.UserNotFound);
+                }
+
+                await _dataContext.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                return result.Id;
             }
-
-            await _dataContext.SaveChangesAsync();
-
-            return "Save evaluate successfully!";
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            throw new AppException(ex.Message);
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                await transaction.RollbackAsync();
+                throw new AppException(ex.Message);
+            }
         }
     }
 
 
     //private method
-    private string GetRangeScore(IEnumerable<QuizRangeScore> scores, double score)
+    private string GetRangeScore(IEnumerable<QuizRangeScore> rangeScores, double score)
     {
-        foreach (var range in scores)
+        foreach (var range in rangeScores)
         {
             if (score >= range.MinScore && score <= range.MaxScore)
             {

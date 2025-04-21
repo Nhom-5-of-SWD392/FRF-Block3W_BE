@@ -25,8 +25,9 @@ public interface IPostService
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
     Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients);
-
     Task<string> VerifyPost(bool isConfirm, Guid postId,string userId);
+    Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model);
+    Task<IEnumerable<CommentResponseModel>> GetCommentsByPostIdAsync(Guid postId);
 }
 public class PostService : IPostService
 {
@@ -657,5 +658,70 @@ public class PostService : IPostService
         }
 	}
 
-	
+    public async Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var user = await _dataContext.User
+                .FirstOrDefaultAsync(u => !u.IsDeleted && u.Id == new Guid(userId));
+            if (user == null || user.Role != UserRole.Member && user.Role != UserRole.Administrator)
+                throw new AppException(ErrorMessage.OnlyMemberCanComment);
+
+            var post = await GetById(postId);
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
+
+            if (model.ParentCommentId != null)
+            {
+                var parent = await _dataContext.Comment
+                    .FirstOrDefaultAsync(c => !c.IsDeleted && c.Id == model.ParentCommentId);
+                if (parent == null)
+                    throw new AppException(ErrorMessage.ParentCommentNotFound);
+            }
+
+            var comment = new Comment
+            {
+                Content = model.Content,
+                PostId = post.Id,
+                UserId = user.Id,
+                ParentCommentId = model.ParentCommentId,
+                CreatedBy = user.Id
+            };
+
+            await _dataContext.Comment.AddAsync(comment);
+
+            await _dataContext.SaveChangesAsync();
+
+            return comment.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
+    public async Task<IEnumerable<CommentResponseModel>> GetCommentsByPostIdAsync(Guid postId)
+    {
+        try
+        {
+            var comments = await _dataContext.Comment
+                .Where(c => !c.IsDeleted && c.Post!.Id == postId && c.ParentCommentId == null)
+                .Include(c => c.User)
+                .Include(c => c.Reactions)
+                .ToListAsync();
+
+            return comments.Select(c => new CommentResponseModel(c));
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
 }

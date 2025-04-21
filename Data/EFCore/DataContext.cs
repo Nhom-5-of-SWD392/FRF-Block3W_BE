@@ -73,5 +73,11 @@ public class DataContext : DbContext
             .WithMany(u => u.QuizEvaluate)
             .HasForeignKey(a => a.EvaluateById)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Comment>()
+            .HasOne(c => c.ParentComment)
+            .WithMany(c => c.ChildComments)
+            .HasForeignKey(c => c.ParentCommentId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

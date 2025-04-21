@@ -79,7 +79,7 @@ public class FavoriteService : IFavoriteService
 
 			if (favorite == null)
 			{
-				throw new AppException(ErrorMessage.TopicNotFound);
+				throw new AppException(ErrorMessage.FavoriteNotFound);
 			}
 
 			return favorite;

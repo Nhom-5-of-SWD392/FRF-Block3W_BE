@@ -43,3 +43,19 @@ public class TopicAddToPostModel
 {
     public Guid Id { get; set; }
 }
+
+public class PostTopicResponse
+{
+    public Guid Id { get; set; }
+    public string? Name { get; set; } = string.Empty;
+    public List<PostResponse> Posts { get; set; } = new();
+}
+
+public class PostResponse
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+}
+
