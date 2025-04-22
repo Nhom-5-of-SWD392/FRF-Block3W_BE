@@ -113,8 +113,7 @@ public class ReactionService : IReactionService
 
 			// Create the view model with the comment id
 			var viewModel = new ReactionNumberViewModel
-			{
-				CommentId = id,
+			{				
 				Love = 0,
 				Happy = 0,
 				Bad = 0,
