@@ -106,12 +106,11 @@ public class FavoriteService : IFavoriteService
 				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
 				.Include(p => p.Post)
 				.AsQueryable();
+
 			queryable = queryable.SearchByKeyword(p => p.Post.Title, query.Search);
 
 			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-
-			//Convert Favorite to FavoriteViewModel using var data variable
 			var favoriteView = _mapper.Map<List<Favorite>, List<FavoriteViewModel>>(data.ToList());
 
 			var pagingData = new PagingModel<FavoriteViewModel>()
@@ -122,8 +121,8 @@ public class FavoriteService : IFavoriteService
 				TotalPages = data.TotalPages,
 				pagingData = favoriteView
 			};
-			return pagingData;
 
+			return pagingData;
 		}
 		catch (Exception e)
 		{

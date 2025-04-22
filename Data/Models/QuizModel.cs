@@ -33,8 +33,8 @@ public class CreateQuizRequest
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public QuizType Type { get; set; }
-    public List<QuizRangeScoreAddToQuiz> QuizRangeScore { get; set; } = new();
     public List<CreateQuizQuestionRequest> Questions { get; set; } = new();
+    public List<QuizRangeScoreAddToQuiz> QuizRangeScore { get; set; } = new();
 }
 
 public class CreateQuizQuestionRequest

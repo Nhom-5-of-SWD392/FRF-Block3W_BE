@@ -105,108 +105,97 @@ public class QuizService : IQuizService
 
     public async Task<Guid> CreateFullQuizAsync(string userId, CreateQuizRequest model)
     {
-        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+        if (string.IsNullOrEmpty(userId))
+            throw new AppException(ErrorMessage.Unauthorize);
+
+        using var transaction = await _dataContext.Database.BeginTransactionAsync();
+
+        try
         {
-            try
+            var newQuiz = new Quiz
             {
-                if (string.IsNullOrEmpty(userId))
-                {
-                    throw new AppException(ErrorMessage.Unauthorize);
-                }
+                Name = model.Name,
+                Description = model.Description,
+                Type = model.Type,
+                CreatedBy = new Guid(userId),
+            };
 
-                var newQuiz = new QuizCreateModel
+            await _dataContext.Quiz.AddAsync(newQuiz);
+
+            var allQuestions = new List<QuizQuestion>();
+            var allAnswers = new List<QuizAnswer>();
+            int totalMaxScore = 0;
+
+            foreach (var questionModel in model.Questions)
+            {
+                if (newQuiz.Type == QuizType.Quiz && questionModel.Type != QuestionType.MultipleChoice)
+                    throw new AppException(ErrorMessage.QuizTypeOnlyMulChoice);
+
+                var newQuestion = new QuizQuestion
                 {
-                    Name = model.Name,
-                    Description = model.Description,
-                    Type = model.Type,
+                    QuestionText = questionModel.QuestionText,
+                    Type = questionModel.Type,
+                    QuizId = newQuiz.Id,
+                    CreatedBy = new Guid(userId),
                 };
-                var quizData = _mapper.Map<QuizCreateModel, Quiz>(newQuiz);
 
-                quizData.CreatedBy = new Guid(userId);
+                allQuestions.Add(newQuestion);
 
-                await _dataContext.Quiz.AddAsync(quizData);
+                int maxScore = 0;
 
-                foreach (var range in model.QuizRangeScore)
+                if (questionModel.Answers != null && questionModel.Answers.Any())
                 {
-                    if (range.MinScore > range.MaxScore)
-                        throw new AppException(ErrorMessage.MinCantGreaterMax);
-
-                    var rangeScore = new QuizRangeScore
+                    foreach (var answerModel in questionModel.Answers)
                     {
-                        MinScore = range.MinScore,
-                        MaxScore = range.MaxScore,
-                        Result = range.Result,
-                        QuizId = quizData.Id
-                    };
+                        var answer = new QuizAnswer
+                        {
+                            AnswerText = questionModel.Type == QuestionType.Essay ? null : answerModel.AnswerText ?? null,
+                            Score = answerModel.Score,
+                            QuizQuestion = newQuestion,
+                            QuizId = newQuiz.Id
+                        };
 
-                    await _dataContext.QuizRangeScore.AddAsync(rangeScore);
+                        allAnswers.Add(answer);
 
-                    rangeScore.CreatedBy = new Guid(userId);
+                        maxScore = Math.Max(maxScore, answerModel.Score);
+                    }
+
+                    totalMaxScore += maxScore;
                 }
-
-                foreach (var questionModel in model.Questions)
+                else if (questionModel.Type == QuestionType.MultipleChoice)
                 {
-                    if (newQuiz.Type == QuizType.Quiz && questionModel.Type != QuestionType.MultipleChoice)
-                        throw new AppException(ErrorMessage.QuizTypeOnlyMulChoice);
-
-                    var newQuestion = new QuizQuestionCreateModel
-                    {
-                        QuestionText = questionModel.QuestionText,
-                        Type = questionModel.Type,
-                        QuizId = quizData.Id,
-                    };
-                    var quizQuestionData = _mapper.Map<QuizQuestionCreateModel, QuizQuestion>(newQuestion);
-                    await _dataContext.QuizQuestion.AddAsync(quizQuestionData);
-
-                    if (quizQuestionData.Type == QuestionType.MultipleChoice)
-                    {
-                        if (questionModel.Answers == null || !questionModel.Answers.Any())
-                            throw new AppException(ErrorMessage.MulChoiceMustHaveAnswer);
-
-                        foreach (var answerModel in questionModel.Answers)
-                        {
-                            var newAnswer = new QuizAnswerModel
-                            {
-                                AnswerText = answerModel.AnswerText,
-                                Score = answerModel.Score,
-                                QuizQuestionId = quizQuestionData.Id,
-                                QuizId = quizData.Id
-                            };
-                            var quizAnswerData = _mapper.Map<QuizAnswerModel, QuizAnswer>(newAnswer);
-                            await _dataContext.QuizAnswer.AddAsync(quizAnswerData);
-                        }
-                    }
-                    else if (quizQuestionData.Type == QuestionType.Essay)
-                    {
-                        foreach (var answerModel in questionModel.Answers)
-                        {
-                            var newEssayAnswer = new QuizAnswerModel
-                            {
-                                AnswerText = "",
-                                Score = answerModel.Score,
-                                QuizQuestionId = quizQuestionData.Id,
-                                QuizId = quizData.Id
-                            };
-                            var quizEssayAnswerData = _mapper.Map<QuizAnswerModel, QuizAnswer>(newEssayAnswer);
-
-                            await _dataContext.QuizAnswer.AddAsync(quizEssayAnswerData);
-                        }
-                    }
+                    throw new AppException(ErrorMessage.MulChoiceMustHaveAnswer);
                 }
-
-                await _dataContext.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                return quizData.Id;
             }
-            catch (Exception e)
+
+            await _dataContext.QuizQuestion.AddRangeAsync(allQuestions);
+            await _dataContext.QuizAnswer.AddRangeAsync(allAnswers);
+
+            ValidateRangeScores(model.QuizRangeScore, totalMaxScore);
+
+            var rangeScores = model.QuizRangeScore.Select(r => new QuizRangeScore
             {
-                Console.WriteLine(e);
-                await transaction.RollbackAsync();
-                throw new AppException(e.Message);
-            }
+                Id = Guid.NewGuid(),
+                QuizId = newQuiz.Id,
+                MinScore = r.MinScore,
+                MaxScore = r.MaxScore,
+                Result = r.Result,
+                CreatedBy = new Guid(userId)
+            });
 
+            await _dataContext.QuizRangeScore.AddRangeAsync(rangeScores);
+
+            await _dataContext.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return newQuiz.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            await transaction.RollbackAsync();
+            throw new AppException(e.Message);
         }
     }
 
@@ -392,83 +381,83 @@ public class QuizService : IQuizService
 
     public async Task<Guid> SubmitQuizAsync(string userId, SubmitQuizRequest request)
     {
-        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+        if (string.IsNullOrEmpty(userId))
+            throw new AppException(ErrorMessage.Unauthorize);
+
+        await using var transaction = await _dataContext.Database.BeginTransactionAsync();
+
+        try
         {
-            try
+            var quiz = await _dataContext.Quiz
+                .Include(q => q.QuizQuestions)!
+                    .ThenInclude(q => q.QuizAnswers)
+                .Include(q => q.QuizRangeScores)
+                .FirstOrDefaultAsync(q => q.Id == request.QuizId);
+
+            if (quiz == null)
+                throw new AppException(ErrorMessage.QuizNotExist);
+
+            double totalScore = 0;
+            var quizDetails = new List<QuizDetail>();
+
+            foreach (var answer in request.Answers)
             {
-                if (string.IsNullOrEmpty(userId))
+                var question = quiz.QuizQuestions!.FirstOrDefault(q => q.Id == answer.QuestionId);
+                if (question == null) continue;
+
+                var detail = new QuizDetail
                 {
-                    throw new AppException(ErrorMessage.Unauthorize);
-                }
+                    QuizQuestionId = answer.QuestionId,
+                    QuizId = quiz.Id
+                };
 
-                var quiz = await _dataContext.Quiz
-                    .Include(q => q.QuizQuestions)!
-                        .ThenInclude(q => q.QuizAnswers)
-                    .Include(q => q.QuizRangeScores)
-                    .FirstOrDefaultAsync(q => q.Id == request.QuizId);
-
-                if (quiz == null)
-                    throw new AppException(ErrorMessage.QuizNotExist);
-
-                double totalScore = 0;
-                var quizDetails = new List<QuizDetail>();
-
-                foreach (var answer in request.Answers)
+                switch (question.Type)
                 {
-                    var question = quiz.QuizQuestions!.FirstOrDefault(q => q.Id == answer.QuestionId);
-                    if (question == null) continue;
-
-                    var detail = new QuizDetail
-                    {
-                        QuizQuestionId = answer.QuestionId,
-                        QuizId = quiz.Id
-                    };
-
-                    if (question.Type == QuestionType.MultipleChoice && answer.AnswerId != null)
-                    {
-                        detail.QuizAnswerId = answer.AnswerId.Value;
-                        var selectedAnswer = question.QuizAnswers!.FirstOrDefault(a => a.Id == answer.AnswerId);
+                    case QuestionType.MultipleChoice when answer.AnswerId.HasValue:
+                        var selectedAnswer = question.QuizAnswers?.FirstOrDefault(a => a.Id == answer.AnswerId.Value);
                         if (selectedAnswer != null)
                         {
+                            detail.QuizAnswerId = selectedAnswer.Id;
                             detail.EvaluationScore = selectedAnswer.Score;
                             totalScore += selectedAnswer.Score;
                         }
-                    }
-                    else if (question.Type == QuestionType.Essay)
-                    {
+                        break;
+
+                    case QuestionType.Essay:
                         detail.EssayAnswerText = answer.EssayAnswer;
                         detail.EvaluationScore = 0;
-                    }
-
-                    quizDetails.Add(detail);
+                        break;
                 }
 
-                var result = new QuizResult
-                {
-                    Id = Guid.NewGuid(),
-                    QuizId = quiz.Id,
-                    QuizMadeById = new Guid(userId),
-                    FinalScore = quiz.Type == QuizType.Quiz ? totalScore : 0,
-                    Status = quiz.Type == QuizType.Quiz ? QuizResultStatus.Completed : QuizResultStatus.Pending,
-                    Result = quiz.Type == QuizType.Quiz ? GetRangeScore(quiz.QuizRangeScores!, totalScore) : "Waiting for review...",
-                    CreatedBy = new Guid(userId),
-                    QuizDetails = quizDetails
-                };
-
-                await _dataContext.QuizResult.AddAsync(result);
-
-                await _dataContext.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                return result.Id;
+                quizDetails.Add(detail);
             }
-            catch (Exception e)
+
+            var isAutoEvaluated = quiz.Type == QuizType.Quiz;
+
+            var result = new QuizResult
             {
-                Console.WriteLine(e);
-                await transaction.RollbackAsync();
-                throw new AppException(e.Message);
-            }
+                QuizId = quiz.Id,
+                QuizMadeById = Guid.Parse(userId),
+                FinalScore = isAutoEvaluated ? totalScore : 0,
+                Status = isAutoEvaluated ? QuizResultStatus.Completed : QuizResultStatus.Pending,
+                Result = isAutoEvaluated
+                    ? GetRangeScore(quiz.QuizRangeScores!, totalScore)
+                    : "Đang chờ đánh giá...",
+                CreatedBy = Guid.Parse(userId),
+                QuizDetails = quizDetails
+            };
+
+            await _dataContext.QuizResult.AddAsync(result);
+            await _dataContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return result.Id;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Lỗi khi nộp bài quiz: {ex}");
+            throw new AppException(ex.Message);
         }
     }
 
@@ -599,87 +588,76 @@ public class QuizService : IQuizService
 
     public async Task<Guid> EvaluateInterviewAsync(string evaluatorId, EvaluateEssayRequest model)
     {
-        using (var transaction = await _dataContext.Database.BeginTransactionAsync())
+        if (string.IsNullOrEmpty(evaluatorId))
+            throw new AppException(ErrorMessage.Unauthorize);
+
+        var evaluatorGuid = Guid.Parse(evaluatorId);
+
+        await using var transaction = await _dataContext.Database.BeginTransactionAsync();
+
+        try
         {
-            try
+            var result = await _dataContext.QuizResult
+                .Include(r => r.QuizDetails!)
+                    .ThenInclude(q => q.QuizQuestion)
+                        .ThenInclude(q => q.QuizAnswers)
+                .Include(r => r.Quiz)
+                    .ThenInclude(q => q.QuizRangeScores)
+                .FirstOrDefaultAsync(r => r.Id == model.QuizResultId && !r.IsDeleted);
+
+            if (result == null || result.Status != QuizResultStatus.Pending)
+                throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
+
+            double finalScore = 0;
+
+            foreach (var detail in result.QuizDetails!)
             {
-                if (string.IsNullOrEmpty(evaluatorId))
+                var question = detail.QuizQuestion;
+                if (question == null) continue;
+
+                if (question.Type == QuestionType.Essay)
                 {
-                    throw new AppException(ErrorMessage.Unauthorize);
-                }
+                    if (!model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
+                        throw new AppException(ErrorMessage.QuestionNotFound);
 
-                var evaluatorGuid = new Guid(evaluatorId);
+                    var maxScore = question.QuizAnswers?.Max(a => a.Score) ?? 0;
 
-                var result = await _dataContext.QuizResult
-                    .Include(r => r.QuizDetails!)
-                        .ThenInclude(q => q.QuizQuestion)
-                            .ThenInclude(q => q.QuizAnswers)
-                    .Include(r => r.Quiz)
-                        .ThenInclude(q => q.QuizRangeScores)
-                    .FirstOrDefaultAsync(r => r.Id == model.QuizResultId);
+                    if (score > maxScore)
+                        throw new AppException($"Điểm không thể vượt quá {maxScore} cho câu hỏi này.");
 
-                if (result == null || result.Status != QuizResultStatus.Pending)
-                    throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
+                    detail.EvaluationScore = score;
 
-                double finalScore = 0;
-                foreach (var detail in result.QuizDetails!)
-                {
-                    var question = detail.QuizQuestion;
-
-                    if (question != null && question.Type == QuestionType.Essay)
-                    {
-                        if (!model.EssayScores.TryGetValue(detail.QuizQuestionId, out var score))
-                        {
-                            throw new AppException(ErrorMessage.QuestionNotFound);
-                        }
-
-                        var maxScore = await _dataContext.QuizAnswer
-                            .Where(a => a.QuizQuestionId == detail.QuizQuestionId)
-                            .MaxAsync(a => (double?)a.Score) ?? 0;
-
-                        if (score > maxScore)
-                        {
-                            throw new AppException($"Score cannot exceed the maximum value of {maxScore} for this question");
-                        }
-
-                        detail.EvaluationScore = score;
-
-                        finalScore += score;
-                    }
-                    else
-                    {
-                        finalScore += detail.EvaluationScore;
-                    }
-                }
-
-                result.FinalScore = finalScore;
-                result.EvaluateById = evaluatorGuid;
-                result.Status = QuizResultStatus.Completed;
-                result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
-
-                var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.QuizMadeById);
-                if (user != null)
-                {
-                    user.IsModerator = true;
-                    _dataContext.Update(user);
+                    finalScore += score;
                 }
                 else
                 {
-                    throw new AppException(ErrorMessage.UserNotFound);
+                    finalScore += detail.EvaluationScore;
                 }
-
-                await _dataContext.SaveChangesAsync();
-
-                await transaction.CommitAsync();
-
-                return result.Id;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                await transaction.RollbackAsync();
-                throw new AppException(ex.Message);
-            }
+
+            result.FinalScore = finalScore;
+            result.EvaluateById = evaluatorGuid;
+            result.Status = QuizResultStatus.Completed;
+            result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
+
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.QuizMadeById && !u.IsDeleted);
+            if (user == null)
+                throw new AppException(ErrorMessage.UserNotFound);
+
+            user.IsModerator = true;
+            _dataContext.Update(user);
+
+            await _dataContext.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return result.Id;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Lỗi khi chấm điểm bài phỏng vấn: {ex}");
+            throw new AppException(ex.Message);
         }
     }
 
@@ -694,7 +672,27 @@ public class QuizService : IQuizService
                 return range.Result;
             }
         }
-        return "Not in range";
+        return "Không trong phạm vi điểm";
     }
 
+    private void ValidateRangeScores(List<QuizRangeScoreAddToQuiz> ranges, int totalMaxScore)
+    {
+        if (ranges == null || !ranges.Any()) return;
+
+        var sorted = ranges.OrderBy(r => r.MinScore).ToList();
+
+        for (int i = 0; i < sorted.Count; i++)
+        {
+            var current = sorted[i];
+
+            if (current.MinScore > current.MaxScore)
+                throw new AppException(ErrorMessage.MinCantGreaterMax);
+
+            if (current.MinScore < 0 || current.MaxScore > totalMaxScore)
+                throw new AppException($"Điểm số của bài kiểm tra phải nằm trong khoảng từ 0 đến {totalMaxScore}.");
+
+            if (i > 0 && current.MinScore <= sorted[i - 1].MaxScore)
+                throw new AppException(ErrorMessage.NotOverlap);
+        }
+    }
 }
