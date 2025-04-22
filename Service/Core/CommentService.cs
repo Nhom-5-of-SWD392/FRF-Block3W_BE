@@ -103,7 +103,7 @@ public class CommentService : ICommentService
 
             await _dataContext.SaveChangesAsync();
 
-            return "Deleted!";
+            return "Đã xóa!";
         }
         catch (Exception e)
         {

@@ -77,7 +77,7 @@ public class ReactionService : IReactionService
 				}
 				else
 				{
-					view.UserName = "Unknown";
+					view.UserName = "Thành viên ẩn danh";
 				}
 				return view;
 			}

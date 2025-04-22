@@ -186,7 +186,7 @@ public class TopicService : ITopicService
                     Id = pt.Post!.Id,
                     Title = pt.Post.Title,
                     Content = pt.Post.Content,
-                    AuthorName = pt.Post.PostBy?.FirstName + pt.Post.PostBy?.LastName ?? "Anonymous"
+                    AuthorName = pt.Post.PostBy?.FirstName + pt.Post.PostBy?.LastName ?? "Thành viên ẩn danh"
                 }).ToList()
             };
 
@@ -199,12 +199,4 @@ public class TopicService : ITopicService
         }
     }
 
-
-    //private method
-    private void SearchByKeyWord(ref IQueryable<Topic> topic, string keyword)
-	{
-		if (!topic.Any() || string.IsNullOrWhiteSpace(keyword))
-			return;
-		topic = topic.Where(o => o.Name.ToLower().Contains(keyword.Trim().ToLower()));
-	}
 }

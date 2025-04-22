@@ -91,8 +91,6 @@ public class FavoriteService : IFavoriteService
 		}
 	}
 
-	
-
 	public async Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel query, string userId, string role)
 	{
 		try
