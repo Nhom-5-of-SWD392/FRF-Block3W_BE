@@ -24,4 +24,11 @@ public class ReactionController : ControllerBase
 		var result = await _reactionService.CreateReaction(model, userId);
 		return Ok(result);
 	}
+
+	[HttpGet("{id}")]
+	public async Task<IActionResult> GetReactionByCommentId(Guid id)
+	{
+		var result = await _reactionService.GetReactionByCommentId(id);
+		return Ok(result);
+	}
 }

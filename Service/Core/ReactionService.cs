@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Data.EFCore;
 using Data.Entities;
+using Data.Enum;
 using Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
@@ -15,6 +16,7 @@ namespace Service.Core;
 public interface IReactionService
 {
 	Task<Guid> CreateReaction(ReactionCreateModel model, string userId);
+	Task<ReactionNumberViewModel> GetReactionByCommentId(Guid id);
 	
 }
 public class ReactionService : IReactionService
@@ -39,7 +41,7 @@ public class ReactionService : IReactionService
 
 				reaction.CreatedBy = new Guid(userId);
 				reaction.UserId = new Guid(userId);
-
+				reaction.CommentId = model.CommentId;
 
 				await _dataContext.Reaction.AddAsync(reaction);
 
@@ -94,4 +96,67 @@ public class ReactionService : IReactionService
 			throw new Exception(e.Message);
 		}
 	}
+
+	public async Task<ReactionNumberViewModel> GetReactionByCommentId(Guid id)
+	{
+		try
+		{
+			var reactionCounts = await _dataContext.Reaction
+			.Where(r => r.CommentId == id)
+			.GroupBy(r => r.ReactionType)
+				.Select(g => new
+				 {
+					ReactionType = g.Key,
+					Count = g.Count()
+				})
+			.ToListAsync();
+
+			// Create the view model with the comment id
+			var viewModel = new ReactionNumberViewModel
+			{
+				CommentId = id,
+				Love = 0,
+				Happy = 0,
+				Bad = 0,
+				Sad = 0,
+				Like = 0				
+			};
+
+			// Populate the counts for each reaction type
+			foreach (var reactionCount in reactionCounts)
+			{
+				switch (reactionCount.ReactionType)
+				{
+					case ReactionType.Love:
+						viewModel.Love = reactionCount.Count;
+						break;
+					case ReactionType.Happy:
+						viewModel.Happy = reactionCount.Count;
+						break;
+					case ReactionType.Bad:
+						viewModel.Bad = reactionCount.Count;
+						break;
+					case ReactionType.Sad:
+						viewModel.Sad = reactionCount.Count;
+						break;
+					case ReactionType.Like:
+						viewModel.Like = reactionCount.Count;
+						break;
+					
+				}
+			}
+
+			return viewModel;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+
+
+	
 }
+
+

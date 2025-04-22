@@ -22,3 +22,13 @@ public class ReactionCreateModel
 	public Guid UserId { get; set; }
 	public Guid CommentId { get; set; }
 }
+
+public class ReactionNumberViewModel
+{
+	public int Love { get; set; }
+	public int Happy { get; set; }
+	public int Bad { get; set; }
+	public int Sad { get; set; }
+	public int Like { get; set; }
+	
+}
