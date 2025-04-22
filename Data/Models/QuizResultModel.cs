@@ -48,6 +48,12 @@ public class EvaluateEssayRequest
     public Dictionary<Guid, double> EssayScores { get; set; } = new();
 }
 
+public class QuizResultViewRequest : BaseModel
+{
+    public string Result { get; set; } = string.Empty;
+    public QuizResultStatus Status { get; set; }
+    public double FinalScore { get; set; }
+}
 
 
 

@@ -124,6 +124,8 @@ public static class ErrorMessage
     public static string UnsupportedFile = "Định dạng tệp không được hỗ trợ. Chỉ chấp nhận hình ảnh và video.";
     public static string OnlyAllowImage = "Chỉ chấp nhận hình ảnh.";
     public static string OnlyAdminAndModerator = "Chỉ Quản trị viên hoặc Người kiểm duyệt mới được phép thao tác này.";
+    public static string InvalidTokenOrEmail = "Invalid token or email.";
+    public static string TokenExpired = "Invalid or expired token.";
     public static string ValidatePassword = "Password does not meet the required complexity standards:\n" +
                                             "- At least 8 characters long\n" +
                                             "- Include UPPERCASE and lowercase letters\n" +

@@ -20,6 +20,7 @@ public class ModeratorApplicationApproveModel
 
 public class RequestViewModel : BaseModel
 {
+    public QuizResultViewRequest QuizResult { get; set; } = new ();
     public Guid RegisterById { get; set; }
     public string? RegistrantName { get; set; }
     public string? RegistrantEmail { get; set; }

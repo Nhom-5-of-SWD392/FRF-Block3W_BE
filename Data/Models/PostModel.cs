@@ -16,6 +16,7 @@ public class PostViewModel : BaseModel
 	public Guid PostById { get; set; }
 	public Guid? ConfirmBy { get; set; }
 	public List<TopicViewModel> Topics { get; set; } = new();
+	public List<MediaViewModel> Medias { get; set; } = new();
 }
 
 public class PostCreateModel
@@ -46,6 +47,15 @@ public class PostQueryModel : QueryStringParameters
 
 	public PostStatus? Status { get; set; }
 	public string? Search { get; set; }
+}
+
+public class PostApproveQueryModel : QueryStringParameters
+{
+    public PostApproveQueryModel()
+    {
+
+    }
+    public string? Search { get; set; }
 }
 
 public class PostDetailResponse

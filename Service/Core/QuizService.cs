@@ -384,6 +384,8 @@ public class QuizService : IQuizService
         if (string.IsNullOrEmpty(userId))
             throw new AppException(ErrorMessage.Unauthorize);
 
+        var userGuid = Guid.Parse(userId);
+
         await using var transaction = await _dataContext.Database.BeginTransactionAsync();
 
         try
@@ -397,8 +399,15 @@ public class QuizService : IQuizService
             if (quiz == null)
                 throw new AppException(ErrorMessage.QuizNotExist);
 
+            var quizResult = await _dataContext.QuizResult
+                .Include(qr => qr.QuizDetails)
+                .FirstOrDefaultAsync(qr => qr.QuizId == request.QuizId && qr.CreatedBy == userGuid);
+
+            if (quizResult == null)
+                throw new AppException(ErrorMessage.QuizResultNotFound);
+
             double totalScore = 0;
-            var quizDetails = new List<QuizDetail>();
+            var newDetails = new List<QuizDetail>();
 
             foreach (var answer in request.Answers)
             {
@@ -407,7 +416,7 @@ public class QuizService : IQuizService
 
                 var detail = new QuizDetail
                 {
-                    QuizQuestionId = answer.QuestionId,
+                    QuizQuestionId = question.Id,
                     QuizId = quiz.Id
                 };
 
@@ -429,29 +438,25 @@ public class QuizService : IQuizService
                         break;
                 }
 
-                quizDetails.Add(detail);
+                newDetails.Add(detail);
             }
 
             var isAutoEvaluated = quiz.Type == QuizType.Quiz;
 
-            var result = new QuizResult
-            {
-                QuizId = quiz.Id,
-                QuizMadeById = Guid.Parse(userId),
-                FinalScore = isAutoEvaluated ? totalScore : 0,
-                Status = isAutoEvaluated ? QuizResultStatus.Completed : QuizResultStatus.Pending,
-                Result = isAutoEvaluated
-                    ? GetRangeScore(quiz.QuizRangeScores!, totalScore)
-                    : "Đang chờ đánh giá...",
-                CreatedBy = Guid.Parse(userId),
-                QuizDetails = quizDetails
-            };
+            quizResult.QuizDetails = newDetails;
+            quizResult.FinalScore = isAutoEvaluated ? totalScore : 0;
+            quizResult.Status = isAutoEvaluated ? QuizResultStatus.Completed : QuizResultStatus.Pending;
+            quizResult.Result = isAutoEvaluated
+                ? GetRangeScore(quiz.QuizRangeScores!, totalScore)
+                : "Đang chờ đánh giá...";
+            quizResult.UpdatedAt = DateTime.UtcNow;
+            quizResult.UpdatedBy = userGuid;
 
-            await _dataContext.QuizResult.AddAsync(result);
+            _dataContext.QuizResult.Update(quizResult);
             await _dataContext.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return result.Id;
+            return quizResult.Id;
         }
         catch (Exception ex)
         {
@@ -480,6 +485,8 @@ public class QuizService : IQuizService
             var response = new QuizResultView
             {
                 Id = result.Id,
+                CreatedBy = result.CreatedBy,
+                UpdatedBy = result.UpdatedBy,
                 Quizz = new QuizzModel
                 {
                     QuizId = result.Quiz?.Id ?? Guid.Empty,
@@ -545,7 +552,7 @@ public class QuizService : IQuizService
             if (role != UserRole.Administrator.ToString() && !string.IsNullOrEmpty(userId))
             {
                 var userGuid = new Guid(userId);
-                queryResult = queryResult.Where(r => r.QuizMadeById == userGuid);
+                queryResult = queryResult.Where(r => r.UpdatedBy == userGuid);
             }
 
             queryResult = queryResult.SearchByKeyword(r => r.Quiz!.Name, query.Search);
@@ -640,7 +647,7 @@ public class QuizService : IQuizService
             result.Status = QuizResultStatus.Completed;
             result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
 
-            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.QuizMadeById && !u.IsDeleted);
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.UpdatedBy && !u.IsDeleted);
             if (user == null)
                 throw new AppException(ErrorMessage.UserNotFound);
 

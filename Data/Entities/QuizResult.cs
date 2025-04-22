@@ -16,13 +16,10 @@ public class QuizResult : BaseEntities
     [ForeignKey("QuizId")]
     public Quiz? Quiz { get; set; }
 
-    public Guid QuizMadeById { get; set; }
-    [ForeignKey("QuizMadeById")]
-    public User? User { get; set; }
-
     public Guid? EvaluateById { get; set; }
     [ForeignKey("EvaluateById")]
     public User? Evaluator { get; set; }
 
     public IList<QuizDetail>? QuizDetails { get; set; }
+    public IList<ModeratorApplication>? ModeratorApplications { get; set; }
 }

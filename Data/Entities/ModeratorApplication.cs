@@ -16,5 +16,8 @@ public class ModeratorApplication : BaseEntities
 
 	public Guid? ConfirmedById { get; set; }
 	[ForeignKey("ConfirmedById")]
-	public User? Confirmer { get; set; } 
+	public User? Confirmer { get; set; }
+    public Guid? QuizResultId { get; set; }
+    [ForeignKey("QuizResultId")]
+    public QuizResult? QuizResult { get; set; }
 }

@@ -62,18 +62,6 @@ public class DataContext : DbContext
             .HasForeignKey(a => a.ComfirmById)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder.Entity<QuizResult>()
-            .HasOne(a => a.User)
-            .WithMany(u => u.QuizMade)
-            .HasForeignKey(a => a.QuizMadeById)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<QuizResult>()
-            .HasOne(a => a.Evaluator)
-            .WithMany(u => u.QuizEvaluate)
-            .HasForeignKey(a => a.EvaluateById)
-            .OnDelete(DeleteBehavior.Restrict);
-
         modelBuilder.Entity<Comment>()
             .HasOne(c => c.ParentComment)
             .WithMany(c => c.ChildComments)

@@ -26,7 +26,6 @@ public class User : BaseEntities
     [Required]
     public Gender Gender { get; set; }
     public string? Bio { get; set; }
-    public string? Address { get; set; }
     public string AvatarUrl { get; set; } = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
     public string? ForgotPwdToken { get; set; }
     public DateTime? ForgotPwdTokenExpiration { get; set; }
@@ -43,6 +42,4 @@ public class User : BaseEntities
     public IList<Post>? Posts { get; set; }
     public IList<Post>? ApprovedPosts { get; set; }
     public IList<Favorite>? Favorites { get; set; }
-    public IList<QuizResult>? QuizMade { get; set; }
-    public IList<QuizResult>? QuizEvaluate { get; set; }
 }

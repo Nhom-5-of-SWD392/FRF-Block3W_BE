@@ -26,7 +26,6 @@ public class UserCreateModel
     public string Password { get; set; } = string.Empty;
     public Gender Gender { get; set; }
     public string? Bio { get; set; }
-    public string? Address { get; set; }
     public string AvatarUrl { get; set; } = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
     public string? ForgotPwdToken { get; set; }
     public UserRole Role { get; set; }
@@ -43,7 +42,6 @@ public class UserUpdateModel
     public string? Email { get; set; }
     public string? UserName { get; set; }
     public string? Bio { get; set; }
-    public string? Address { get; set; }
     [JsonIgnore]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

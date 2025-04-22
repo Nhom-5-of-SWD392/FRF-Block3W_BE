@@ -21,32 +21,26 @@ public class PostController : ControllerBase
 	}
 
     [HttpGet("public")]
-    public async Task<IActionResult> GetAllApprovedPostsAsync([FromQuery] PostQueryModel query)
+    public async Task<IActionResult> GetAllApprovedPostsAsync([FromQuery] PostApproveQueryModel query)
     {
         var result = await _postService.GetAllApprovedPostsAsync(query);
 
         return Ok(result);
     }
 
-	[HttpGet("pending")]
-	public async Task<IActionResult> GetAllPendingPostsAsync([FromQuery] PostQueryModel query)
-	{
-		var result = await _postService.GetAllPendingPostsAsync(query);
-
-		return Ok(result);
-	}
-
-	[HttpGet]
+	[HttpGet("own-post")]
 	public async Task<IActionResult> GetAllPostByUser([FromQuery]PostQueryModel query)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
+
         var role = User.Claims.GetUserRoleFromJwtToken();
+
 		var result = await _postService.GetAllPostByUser(query,userId,role);
 
 		return Ok(result);
 	}
 
-	[HttpPatch("{id}/softDelete")]
+	[HttpPatch("{id}/soft-delete")]
 	public async Task<IActionResult> SoftDelete(Guid id)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();

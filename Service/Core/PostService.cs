@@ -19,8 +19,7 @@ public interface IPostService
 	Task<Post> GetById (Guid id);
 	Task<Guid> SoftDelete(string userId,Guid id);
 	Task<Guid> HardDelete(string userId,Guid id);
-    Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostQueryModel query);
-    Task<PagingModel<PostViewModel>> GetAllPendingPostsAsync(PostQueryModel query);
+    Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostApproveQueryModel query);
 	Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
@@ -144,13 +143,15 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostQueryModel query)
+    public async Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostApproveQueryModel query)
     {
         try
         {
             var queryable = _dataContext.Post
                 .Where(p => !p.IsDeleted && p.Status == PostStatus.Approved)
-                .Include(p => p.PostTopic)
+                .Include(p => p.PostTopic)!
+                    .ThenInclude(pt => pt.Topic)
+                .Include(p => p.Medias)
                 .AsQueryable();
 
             queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
@@ -159,16 +160,27 @@ public class PostService : IPostService
 
             var postView = data.Select(post =>
             {
-                var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+                var postViewModel = new PostViewModel
+                {
+                    Id = post.Id,
+                    Title = post.Title,
+                    Status = post.Status,
+                    PostById = post.PostById,
+                    ConfirmBy = post.ComfirmById,
+                    Topics = post.PostTopic?.Select(pt => new TopicViewModel
+                    {
+                        Id = pt.TopicId,
+                        Name = pt.Topic?.Name
+                    }).ToList() ?? new(),
 
-				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
-				{
-					Id = pt.Id,
-					Name = pt.Topic?.Name
+                    Medias = post.Medias?.Select(m => new MediaViewModel
+                    {
+                        Url = m.Url,
+                        Type = m.Type
+                    }).ToList() ?? new()
+                };
 
-				}).ToList() ?? new List<TopicViewModel>();
-
-				return postViewModel;
+                return postViewModel;
             }).ToList();
 
             return new PagingModel<PostViewModel>
@@ -191,92 +203,69 @@ public class PostService : IPostService
     {
         try
         {
-            if (string.IsNullOrEmpty(userId)&&string.IsNullOrEmpty(role))
-            {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(role))
                 throw new AppException(ErrorMessage.Unauthorize);
-            }
 
-            if (role==UserRole.Administrator.ToString())
+            IQueryable<Post> queryable;
+
+            if (role == UserRole.Administrator.ToString())
             {
-                var queryable = _dataContext.Post
-					.Where(p => !p.IsDeleted)					
-					.AsQueryable();
+                queryable = _dataContext.Post
+                    .Where(p => !p.IsDeleted)
+                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias)
+                    .AsQueryable();
 
-				queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
 
-				var filters = new Dictionary<string, string>();
+                var filters = new Dictionary<string, string>();
+                if (query.Status.HasValue)
+                    filters.Add("Status", query.Status.ToString());
 
-				if (query.Status.HasValue)
-				{
-					filters.Add("Status", query.Status.ToString());
-				}
-
-				queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
-
-				var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
-
-				var postView = data.Select(post =>
-				{
-					var postViewModel = _mapper.Map<Post, PostViewModel>(post);
-
-					postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
-					{
-						Id = pt.Id,
-						Name = pt.Topic?.Name
-
-					}).ToList() ?? new List<TopicViewModel>();
-
-					return postViewModel;
-				}).ToList();
-
-				var adminPagingData = new PagingModel<PostViewModel>()
-				{
-					PageIndex = data.CurrentPage,
-					PageSize = data.PageSize,
-					TotalCount = data.TotalCount,
-					TotalPages = data.TotalPages,
-					pagingData = postView
-				};
-				return adminPagingData;
-			}
+                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+            }
             else
             {
-				var queryable = _dataContext.Post
-				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-				.AsQueryable();
+                queryable = _dataContext.Post
+                    .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
+                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias)
+                    .AsQueryable();
 
-				queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            }
 
+            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-				var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+            var postView = data.Select(post => new PostViewModel
+            {
+                Id = post.Id,
+                Title = post.Title,
+                Status = post.Status,
+                PostById = post.PostById,
+                ConfirmBy = post.ComfirmById,
+                Topics = post.PostTopic?.Select(pt => new TopicViewModel
+                {
+                    Id = pt.TopicId,
+                    Name = pt.Topic?.Name
+                }).ToList() ?? new(),
 
-				var postView = data.Select(post =>
-				{
-					var postViewModel = _mapper.Map<Post, PostViewModel>(post);
+                Medias = post.Medias?.Select(m => new MediaViewModel
+                {
+                    Url = m.Url,
+                    Type = m.Type
+                }).ToList() ?? new()
 
-					postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
-					{
-						Id = pt.Id,
-						Name = pt.Topic?.Name
+            }).ToList();
 
-					}).ToList() ?? new List<TopicViewModel>();
-
-					return postViewModel;
-				}).ToList();
-
-				var memberPagingData = new PagingModel<PostViewModel>()
-				{
-					PageIndex = data.CurrentPage,
-					PageSize = data.PageSize,
-					TotalCount = data.TotalCount,
-					TotalPages = data.TotalPages,
-					pagingData = postView
-				};
-				return memberPagingData;
-			}
-
-            
-            
+            return new PagingModel<PostViewModel>
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = postView
+            };
         }
         catch (Exception e)
         {
@@ -574,49 +563,6 @@ public class PostService : IPostService
             }
         }
     }
-
-	public async Task<PagingModel<PostViewModel>> GetAllPendingPostsAsync(PostQueryModel query)
-	{
-		try
-		{
-			var queryable = _dataContext.Post
-				.Where(p => !p.IsDeleted && p.Status == PostStatus.Pending)
-				.Include(p => p.PostTopic)
-				.AsQueryable();
-
-			queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-
-			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
-
-			var postView = data.Select(post =>
-			{
-				var postViewModel = _mapper.Map<Post, PostViewModel>(post);
-
-				postViewModel.Topics = post.PostTopic?.Select(pt => new TopicViewModel
-				{
-					Id = pt.Id,					
-					Name = pt.Topic?.Name
-					
-				}).ToList() ?? new List<TopicViewModel>();
-
-				return postViewModel;
-			}).ToList();
-
-			return new PagingModel<PostViewModel>
-			{
-				PageIndex = data.CurrentPage,
-				PageSize = data.PageSize,
-				TotalCount = data.TotalCount,
-				TotalPages = data.TotalPages,
-				pagingData = postView
-			};
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw new Exception("An error occurred while fetching approved posts.");
-		}
-	}
 
 	public async Task<string> VerifyPost(bool isConfirm, Guid postId, string userId)
 	{

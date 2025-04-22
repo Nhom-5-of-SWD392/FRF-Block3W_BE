@@ -16,3 +16,9 @@ public class MediaListModel
     public IFormFile? File { get; set; }
     public MediaType Type { get; set; }
 }
+
+public class MediaViewModel
+{
+    public string Url { get; set; } = string.Empty;
+    public MediaType Type { get; set; }
+}

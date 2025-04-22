@@ -441,28 +441,50 @@ public class UserService : IUserService
     {
         try
         {
-            if (string.IsNullOrEmpty(userId))
-            {
+            if (string.IsNullOrWhiteSpace(userId))
                 throw new AppException(ErrorMessage.Unauthorize);
-            }
 
-            var existing = await _dataContext.ModeratorApplication
-                .FirstOrDefaultAsync(x => x.RegisterById == new Guid(userId) && x.Status == ApplicationStatus.Pending);
+            var userGuid = new Guid(userId);
 
-            if (existing != null)
+            var existingApplication = await _dataContext.ModeratorApplication
+                .FirstOrDefaultAsync(x => x.RegisterById == userGuid && x.Status == ApplicationStatus.Pending);
+
+            if (existingApplication != null)
                 throw new AppException(ErrorMessage.AlreadyApplyModerator);
+
+            var interviewQuizzes = await _dataContext.Quiz
+                .Where(q => q.Type == QuizType.Interview && !q.IsDeleted)
+                .ToListAsync();
+
+            if (!interviewQuizzes.Any())
+                throw new Exception(ErrorMessage.QuizNotExist);
+
+            var random = new Random();
+            var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
+
+            var quizResult = new QuizResult
+            {
+                QuizId = selectedQuiz.Id,
+                Status = QuizResultStatus.Pending,
+                Result = string.Empty,
+                FinalScore = 0,
+                CreatedBy = userGuid,
+            };
+            await _dataContext.QuizResult.AddAsync(quizResult);
 
             var application = new ModeratorApplication
             {
-                RegisterById = new Guid(userId),
-                Status = ApplicationStatus.Pending
+                RegisterById = userGuid,
+                QuizResultId = quizResult.Id,
+                Status = ApplicationStatus.Pending,
+                CreatedBy = userGuid,
             };
 
             await _dataContext.ModeratorApplication.AddAsync(application);
 
             await _dataContext.SaveChangesAsync();
 
-            return application.Id;
+            return quizResult.Id;
         }
         catch (Exception e)
         {

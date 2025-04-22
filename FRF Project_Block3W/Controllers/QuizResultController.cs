@@ -38,7 +38,6 @@ public class QuizResultController : ControllerBase
         return Ok(result);
     }
 
-    [Authorize("Administrator")]
     [HttpPost("evaluate")]
     public async Task<IActionResult> EvaluateInterviewAsync([FromBody] EvaluateEssayRequest model)
     {
