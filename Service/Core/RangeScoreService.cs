@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Data.EFCore;
+using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
 
 namespace Service.Core;
@@ -22,13 +23,14 @@ public class RangeScoreService : IRangeScoreService
 
     public async Task<string> DeleteRangeScoreAsync(Guid id)
     {
-        var rangeScore = await _dataContext.QuizRangeScore.FindAsync(id)
-            ?? throw new AppException("Quiz range score not found");
+        var rangeScore = await _dataContext.QuizRangeScore
+            .FirstOrDefaultAsync(qrs => !qrs.IsDeleted && qrs.Id == id) 
+            ?? throw new AppException(ErrorMessage.QuizRangeScoreNotFound);
 
         _dataContext.QuizRangeScore.Remove(rangeScore);
 
         await _dataContext.SaveChangesAsync();
 
-        return "Deleted!";
+        return "Đã xóa!";
     }
 }

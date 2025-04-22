@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Data.EFCore;
+using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
 
 namespace Service.Core;
@@ -22,13 +23,14 @@ public class IngredientService : IIngredientService
 
     public async Task<string> DeleteIngredientAsync(Guid ingredientId)
     {
-        var ingredient = await _dataContext.Ingredient.FindAsync(ingredientId)
-            ?? throw new AppException("Ingredient not found");
+        var ingredient = await _dataContext.Ingredient
+            .FirstOrDefaultAsync(i => !i.IsDeleted && i.Id == ingredientId) 
+            ?? throw new AppException(ErrorMessage.IngredientNotFound);
 
         _dataContext.Ingredient.Remove(ingredient);
 
         await _dataContext.SaveChangesAsync();
 
-        return "Deleted!";
+        return "Đã xóa!";
     }
 }

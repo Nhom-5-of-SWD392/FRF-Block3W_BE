@@ -27,13 +27,13 @@ public class MediaService : IMediaService
     public async Task<string> RemoveMediaAsync(Guid mediaId)
     {
         var media = await _dataContext.Media
-            .FirstOrDefaultAsync(m => m.Id == mediaId && !m.IsDeleted);
-        if (media == null)
-            throw new AppException(ErrorMessage.MediaNotFound);
+            .FirstOrDefaultAsync(m => m.Id == mediaId && !m.IsDeleted)
+            ?? throw new AppException(ErrorMessage.MediaNotFound);
 
         _dataContext.Media.Remove(media);
+
         await _dataContext.SaveChangesAsync();
 
-        return "Remove successfully!";
+        return "Đã xóa!";
     }
 }

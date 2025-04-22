@@ -83,6 +83,7 @@ public static class ErrorMessage
     //QuizRangeScore
     public static string MinCantGreaterMax = "Điểm tối thiểu không thể lớn hơn điểm tối đa.";
     public static string NotOverlap = "Điểm của các bài kiểm tra không được trùng nhau.";
+    public static string QuizRangeScoreNotFound = "Phạm vi điểm không tìm thấy.";
 
     //Post
     public static string PostNotFound = "Không tìm thấy bài viết.";
@@ -98,12 +99,22 @@ public static class ErrorMessage
     //Favorite
     public static string FavoriteNotFound = "Không tìm thấy mục yêu thích.";
 
+    //Ingredient
+    public static string IngredientNotFound = "Không tìm thấy nguyên liệu.";
+
+    //Instruction
+    public static string InstructionNotFound = "Không tìm thấy hướng dẫn.";
+
     //Comment
     public static string OnlyMemberCanComment = "Chỉ thành viên đã đăng ký mới có thể bình luận.";
     public static string ParentCommentNotFound = "Không tìm thấy bình luận cha.";
     public static string CommentNotFound = "Không tìm thấy bình luận.";
     public static string OnlyUpdateOwnComment = "Bạn chỉ có thể sửa bình luận của chính mình.";
     public static string OnlyDeleteOwnComment = "Bạn chỉ có thể xóa bình luận của chính mình.";
+
+    //Mail
+    public static string RecipientNotExist = "Người nhận mail không được trống.";
+    public static string EmailNotExist = "Email không tồn tại.";
 
     //Others
     public static string IdNotExist = "ID không tồn tại.";
@@ -113,5 +124,10 @@ public static class ErrorMessage
     public static string UnsupportedFile = "Định dạng tệp không được hỗ trợ. Chỉ chấp nhận hình ảnh và video.";
     public static string OnlyAllowImage = "Chỉ chấp nhận hình ảnh.";
     public static string OnlyAdminAndModerator = "Chỉ Quản trị viên hoặc Người kiểm duyệt mới được phép thao tác này.";
+    public static string ValidatePassword = "Password does not meet the required complexity standards:\n" +
+                                            "- At least 8 characters long\n" +
+                                            "- Include UPPERCASE and lowercase letters\n" +
+                                            "- At least one digit\n" +
+                                            "- At least one special character @#$%^&*!_";
 }
 

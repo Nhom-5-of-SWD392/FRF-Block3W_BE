@@ -336,7 +336,7 @@ public class UserService : IUserService
         {
             var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Email == model.Email && !u.IsDeleted);
             if (user == null)
-                throw new AppException("Email does not exist.");
+                throw new AppException(ErrorMessage.EmailNotExist);
 
             var token = Guid.NewGuid().ToString();
             var resetLink = $"https://intern-s.vercel.app/reset-password?email={model.Email}&token={token}";
@@ -364,20 +364,14 @@ public class UserService : IUserService
             var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Email == passwordResetModel.Email && !u.IsDeleted);
 
             if (user == null || user.ForgotPwdToken != passwordResetModel.Token)
-                throw new AppException("Invalid token or email.");
+                throw new AppException(ErrorMessage.InvalidTokenOrEmail);
 
             if (user.ForgotPwdToken != passwordResetModel.Token || user.ForgotPwdTokenExpiration < DateTime.UtcNow)
-                throw new AppException("Invalid or expired token.");
+                throw new AppException(ErrorMessage.TokenExpired);
 
 
             if (!IsValid(passwordResetModel.NewPassword))
-                throw new AppException(
-                    "Password does not meet the required complexity standards:\n" +
-                    "- At least 8 characters long\n" +
-                    "- Include UPPERCASE and lowercase letters\n" +
-                    "- At least one digit\n" +
-                    "- At least one special character @#$%^&*!_"
-                );
+                throw new AppException(ErrorMessage.ValidatePassword);
 
             user.Password = BCrypt.Net.BCrypt.HashPassword(passwordResetModel.NewPassword);
 
@@ -385,7 +379,7 @@ public class UserService : IUserService
 
             await _dataContext.SaveChangesAsync();
 
-            return "Password reset successful.";
+            return "Thanh đổi mật khẩu thành công";
         }
         catch (Exception e)
         {
@@ -590,7 +584,7 @@ public class UserService : IUserService
 
             await _dataContext.SaveChangesAsync();
 
-            return "Image upload successfully!";
+            return "Tải hình ảnh lên thành công!";
         }
         catch (Exception e)
         {

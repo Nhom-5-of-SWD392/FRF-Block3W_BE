@@ -31,7 +31,7 @@ public class CloudinaryService : ICloudinaryService
     public async Task<string> UploadImageAsync(IFormFile file, string path)
     {
         if (file == null || file.Length == 0)
-            throw new AppException("No file uploaded.");
+            throw new AppException("Không có tệp nào được tải lên.");
 
         await using var stream = file.OpenReadStream();
         var uploadParams = new ImageUploadParams

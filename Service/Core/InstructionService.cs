@@ -23,12 +23,12 @@ public class InstructionService : IInstructionService
     public async Task<string> DeleteInstructionAsync(Guid instructionId)
     {
         var instruction = await _dataContext.Instruction.FindAsync(instructionId)
-            ?? throw new AppException("Instruction not found");
+            ?? throw new AppException(ErrorMessage.InstructionNotFound);
 
         _dataContext.Instruction.Remove(instruction);
 
         await _dataContext.SaveChangesAsync();
 
-        return "Deleted!";
+        return "Đã xóa!";
     }
 }
