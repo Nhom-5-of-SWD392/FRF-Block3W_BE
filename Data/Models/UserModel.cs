@@ -37,10 +37,12 @@ public class UserUpdateModel
 {
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
+    [RegularExpression(@"^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$", ErrorMessage = "Không khớp với định dạng số điện thoại Việt Nam")]
     public string? Phone { get; set; }
-    public DateTime Dob { get; set; }
-    public string? Email { get; set; }
+    public DateTime? Dob { get; set; }
     public string? UserName { get; set; }
+    [EmailAddress(ErrorMessage = "Không đúng định dạng Email")]
+    public string? Email { get; set; }
     public string? Bio { get; set; }
     [JsonIgnore]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -58,9 +60,9 @@ public class UserQueryModel : QueryStringParameters
 
 public class UserRequest
 {
-    [Required(ErrorMessage = "Username is required")]
+    [Required(ErrorMessage = "Tài khoản bắt buộc nhập")]
     public string? UserName { get; set; }
-    [Required(ErrorMessage = "Password is required")]
+    [Required(ErrorMessage = "Mật khẩu bắt buộc nhập")]
     public string? Password { get; set; }
 }
 
@@ -101,21 +103,21 @@ public class PasswordResetModel
 
 public class RegisterUserModel
 {
-    [Required(ErrorMessage = "First Name is required")]
-    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "First Name only letters are allowed")]
+    [Required(ErrorMessage = "Bắt buộc nhập")]
+    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Chỉ được nhập chữ")]
     public string FirstName { get; set; } = string.Empty;
-    [Required(ErrorMessage = "Last Name is required")]
-    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Last Name only letters are allowed")]
+    [Required(ErrorMessage = "Bắt buộc nhập")]
+    [RegularExpression(@"^[\p{L}\s]+$", ErrorMessage = "Chỉ được nhập chữ")]
     public string LastName { get; set; } = string.Empty;
-    [Required(ErrorMessage = "Email is required")]
-    [EmailAddress(ErrorMessage = "Invalid email format")]
+    [Required(ErrorMessage = "Email bắt buộc nhập")]
+    [EmailAddress(ErrorMessage = "Không đúng định dạng Email")]
     public string Email { get; set; } = string.Empty;
-    [RegularExpression(@"^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$", ErrorMessage = "Invalid Vietnamese phone number format")]
+    [RegularExpression(@"^(0|\+84)(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$", ErrorMessage = "Không khớp với định dạng số điện thoại Việt Nam")]
     public string Phone { get; set; } = string.Empty;
-    [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Username must contain only letters and numbers, no spaces.")]
+    [RegularExpression(@"^[a-zA-Z0-9]+$", ErrorMessage = "Tài khoản chỉ chứa chữ và số, không kí tự đặc biệt")]
     public string UserName { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string ConfirmPassword { get; set; } = string.Empty;
-    public DateTime Dob { get; set; }
-    public Gender Gender { get; set; }
+    public DateTime? Dob { get; set; }
+    public Gender? Gender { get; set; }
 }

@@ -14,7 +14,7 @@ public class User : BaseEntities
     [Phone(ErrorMessage = "Phone is not true to the format")]
     [StringLength(13, ErrorMessage = "Phone number up to 13 characters long")]
     public string? Phone { get; set; }
-    public DateTime Dob { get; set; }
+    public DateTime? Dob { get; set; }
     [Required(ErrorMessage = "Email is required")]
     [EmailAddress(ErrorMessage = "Invalid email format")]
     public string Email { get; set; } = string.Empty;
@@ -24,7 +24,7 @@ public class User : BaseEntities
     [Required]
     public string Password { get; set; } = string.Empty;
     [Required]
-    public Gender Gender { get; set; }
+    public Gender? Gender { get; set; }
     public string? Bio { get; set; }
     public string AvatarUrl { get; set; } = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
     public string? ForgotPwdToken { get; set; }

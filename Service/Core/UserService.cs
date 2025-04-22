@@ -138,7 +138,6 @@ public class UserService : IUserService
                     Role = UserRole.Member,
                     UserName = authenticateResult.Email.Split('@')[0],
                     IsModerator = false,
-                    Gender = Gender.Other,
                     GoogleId = authenticateResult.Subject
                 };
                 
@@ -247,18 +246,47 @@ public class UserService : IUserService
         try
         {
             if (string.IsNullOrEmpty(userId))
-            {
                 throw new AppException(ErrorMessage.Unauthorize);
-            }
 
             var user = await GetById(new Guid(userId));
 
-            var updateData = _mapper.Map(model, user);
+            if (!string.IsNullOrWhiteSpace(model.Phone))
+            {
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.Phone == model.Phone && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.PhoneNumberExist);
+            }
 
+            if (model.Dob.HasValue && model.Dob.Value > DateTime.UtcNow)
+                throw new AppException(ErrorMessage.DobNotValid);
+
+            if (user.GoogleId != null && !string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
+                throw new AppException(ErrorMessage.DoNotChangeEmail);
+
+            if (!string.IsNullOrWhiteSpace(model.Email))
+            {
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.Email == model.Email && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.EmailExist);
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.UserName))
+            {
+                if (model.UserName.Length < 4 || model.UserName.Contains(" "))
+                    throw new AppException(ErrorMessage.UserNameValid);
+
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.UserName == model.UserName && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.UserNameExist);
+            }
+
+            if (!string.IsNullOrEmpty(model.Bio) && model.Bio.Length > 250)
+                throw new AppException(ErrorMessage.BioValid);
+
+            var updateData = _mapper.Map(model, user);
             updateData.UpdatedBy = new Guid(userId);
 
             _dataContext.User.Update(updateData);
-
             await _dataContext.SaveChangesAsync();
 
             return user.Id;
@@ -270,13 +298,17 @@ public class UserService : IUserService
         }
     }
 
+
     public async Task<Guid> Delete(Guid id)
     {
         var data = await GetById(id);
 
         data.IsDeleted = true;
+
         _dataContext.User.Update(data);
+
         await _dataContext.SaveChangesAsync();
+
         return data.Id;
     }
 
@@ -393,20 +425,14 @@ public class UserService : IUserService
         try
         {
             if (model.Password != model.ConfirmPassword)
-                throw new AppException("Passwords do not match.");
+                throw new AppException(ErrorMessage.ConfirmPasswordNotMatch);
 
             var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName || x.Phone == model.Phone);
             if (existingUser != null)
-                throw new AppException("Email or Username or Phone number already exists.");
+                throw new AppException(ErrorMessage.AccountExist);
 
             if (!IsValid(model.Password))
-                throw new AppException(
-                    "Password does not meet the required complexity standards: " +
-                    "-At least 8 characters long " +
-                    "-Include UPPERCASE and lowercase letters " +
-                    "-At least one digit " +
-                    "-At least one special character @#$%^&*!_"
-                );
+                throw new AppException(ErrorMessage.ValidatePassword);
 
             string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
 
@@ -418,8 +444,8 @@ public class UserService : IUserService
                 Phone = model.Phone,
                 UserName = model.UserName,
                 Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
-                Dob = DateTime.SpecifyKind(model.Dob, DateTimeKind.Utc),
-                Gender = model.Gender,
+                Dob = model.Dob.HasValue ? DateTime.SpecifyKind(model.Dob.Value, DateTimeKind.Utc) : null,
+                Gender = model.Gender ?? Gender.Other,
                 AvatarUrl = avatarUrl,
                 Role = UserRole.Member
             };
@@ -539,6 +565,7 @@ public class UserService : IUserService
             var queryRequest = _dataContext.ModeratorApplication
                 .Include(m => m.Registrant)
                 .Include(m => m.Confirmer)
+                .Include(m => m.QuizResult)
                 .Where(m => !m.IsDeleted);
 
             queryRequest = queryRequest.SearchByKeyword(r => r.Registrant.FirstName + " " + r.Registrant.LastName, query.Search);
@@ -559,6 +586,7 @@ public class UserService : IUserService
             var requestViewModels = pagedData.Select(reqs => new RequestViewModel
             {
                 Id = reqs.Id,
+                CreatedAt = reqs.CreatedAt,
                 Status = reqs.Status,
                 Reason = reqs.Reason,
                 RegisterById = reqs.RegisterById,
@@ -566,7 +594,16 @@ public class UserService : IUserService
                 RegistrantEmail = reqs.Registrant?.Email,
                 ConfirmedById = reqs.ConfirmedById,
                 ConfirmerName = reqs.Confirmer != null ? reqs.Confirmer.FirstName + " " + reqs.Confirmer.LastName : null,
-                CreatedAt = reqs.CreatedAt
+
+                QuizResult = reqs.QuizResult != null
+                    ? new QuizResultViewRequest
+                    {
+                        Id = reqs.QuizResult.Id,
+                        FinalScore = reqs.QuizResult.FinalScore,
+                        Result = reqs.QuizResult.Result,
+                        Status = reqs.QuizResult.Status
+                    }
+                    : new QuizResultViewRequest()
             }).ToList();
 
             return new PagingModel<RequestViewModel>
@@ -584,6 +621,7 @@ public class UserService : IUserService
             throw new AppException(e.Message);
         }
     }
+
 
     public async Task<string> UpdateAvatarImage(string userId, IFormFile file)
     {

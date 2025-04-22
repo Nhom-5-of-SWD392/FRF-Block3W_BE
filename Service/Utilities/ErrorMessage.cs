@@ -67,6 +67,14 @@ public static class ErrorMessage
     public static string AlreadyApplyModerator = "Bạn đã gửi yêu cầu trở thành người kiểm duyệt.";
     public static string RequestNotFound = "Không tìm thấy người gửi yêu cầu.";
     public static string RequestAlreadyProcessed = "Yêu cầu đã được xử lý.";
+    public static string AccountExist = "Thông tin Email hoặc Tài khoản hoặc Số điện thoại đã tồn tại.";
+    public static string PhoneNumberExist = "Số điện thoại đã tồn tại.";
+    public static string EmailExist = "Email đã tồn tại.";
+    public static string DobNotValid = "Ngày sinh không hợp lệ.";
+    public static string DoNotChangeEmail = "Tài khoản Google không được thay đổi email.";
+    public static string UserNameValid = "Tài khoản phải có ít nhất 4 ký tự và không chứa khoảng trắng.";
+    public static string UserNameExist = "Tài khoản đã tồn tại.";
+    public static string BioValid = "Tiểu sử chỉ được tối đa 250 ký tự.";
 
     //Quiz
     public static string QuizExist = "Bài kiểm tra đã tồn tại!";
@@ -131,5 +139,6 @@ public static class ErrorMessage
                                             "- Include UPPERCASE and lowercase letters\n" +
                                             "- At least one digit\n" +
                                             "- At least one special character @#$%^&*!_";
+    public static string ConfirmPasswordNotMatch = "Mật khẩu xác nhận không khớp.";
 }
 

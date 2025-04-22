@@ -173,7 +173,9 @@ public class PostService : IPostService
                         Name = pt.Topic?.Name
                     }).ToList() ?? new(),
 
-                    Medias = post.Medias?.Select(m => new MediaViewModel
+                    Medias = post.Medias?
+                    .Where(m => m.Type == MediaType.Image)
+                    .Select(m => new MediaViewModel
                     {
                         Url = m.Url,
                         Type = m.Type
@@ -250,7 +252,9 @@ public class PostService : IPostService
                     Name = pt.Topic?.Name
                 }).ToList() ?? new(),
 
-                Medias = post.Medias?.Select(m => new MediaViewModel
+                Medias = post.Medias?
+                .Where(m => m.Type == MediaType.Image)
+                .Select(m => new MediaViewModel
                 {
                     Url = m.Url,
                     Type = m.Type

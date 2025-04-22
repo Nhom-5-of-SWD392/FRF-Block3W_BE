@@ -16,7 +16,6 @@ public interface IQuizService
     Task<PagingModel<QuizViewModel>> GetAll(QuizQueryModel query);
     Task<Guid> CreateFullQuizAsync(string userId, CreateQuizRequest model);
     Task<QuizDetailResponse> GetQuizDetailAsync(Guid quizId);
-    Task<QuizDetailResponse?> GetRandomInterviewQuizAsync();
     Task<Guid> AddQuizRangeScore(string userId, Guid quizId, List<QuizRangeScoreCreateModel> models);
     Task<Guid> SoftDelete(Guid id);
     Task<Guid> HardDelete(Guid id);
@@ -226,59 +225,6 @@ public class QuizService : IQuizService
                     Result = q.Result
                 }).ToList(),
                 Questions = quiz.QuizQuestions.Select(q => new QuizQuestionResponse
-                {
-                    Id = q.Id,
-                    QuestionText = q.QuestionText,
-                    Type = q.Type,
-                    Answers = q.QuizAnswers?.Select(a => new QuizAnswerResponse
-                    {
-                        Id = a.Id,
-                        AnswerText = a.AnswerText,
-                        Score = a.Score
-                    }).ToList()
-                }).ToList()
-            };
-
-            return response;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw new AppException(e.Message);
-        }
-    }
-
-    public async Task<QuizDetailResponse?> GetRandomInterviewQuizAsync()
-    {
-        try
-        {
-            var interviewQuizzes = await _dataContext.Quiz
-                .Where(q => q.Type == QuizType.Interview && !q.IsDeleted)
-                .Include(q => q.QuizQuestions)!
-                    .ThenInclude(q => q.QuizAnswers)
-                .Include(q => q.QuizRangeScores)
-                .ToListAsync();
-
-            if (!interviewQuizzes.Any()) 
-                throw new Exception(ErrorMessage.QuizNotExist);
-
-            var random = new Random();
-            var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
-
-            var response = new QuizDetailResponse
-            {
-                Id = selectedQuiz.Id,
-                Name = selectedQuiz.Name,
-                Description = selectedQuiz.Description,
-                Type = selectedQuiz.Type,
-                QuizRangeScore = selectedQuiz.QuizRangeScores.Select(r => new QuizRangeScoreResponse
-                {
-                    Id = r.Id,
-                    MinScore = r.MinScore,
-                    MaxScore = r.MaxScore,
-                    Result = r.Result
-                }).ToList(),
-                Questions = selectedQuiz.QuizQuestions.Select(q => new QuizQuestionResponse
                 {
                     Id = q.Id,
                     QuestionText = q.QuestionText,
