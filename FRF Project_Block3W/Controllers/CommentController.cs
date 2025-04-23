@@ -12,11 +12,13 @@ namespace FRF_Project_Block3W.Controllers
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;
+		private readonly IReactionService _reactionService;
 
-        public CommentController(ICommentService commentService)
+		public CommentController(ICommentService commentService, IReactionService reactionService)
         {
             _commentService = commentService;
-        }
+			_reactionService = reactionService;
+		}
 
         [HttpGet("replies/{parentCommentId}")]
         public async Task<IActionResult> GetReplies(Guid parentCommentId)
@@ -47,5 +49,24 @@ namespace FRF_Project_Block3W.Controllers
 
             return Ok(result);
         }
-    }
+
+		[HttpPost("{id}/reactions")]
+		public async Task<IActionResult> CreateReaction(Guid id, [FromBody] ReactionCreateModel model)
+		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(ModelState);
+			}
+			var userId = User.Claims.GetUserIdFromJwtToken();
+			var result = await _reactionService.CreateReaction(model, id, userId);
+			return Ok(result);
+		}
+
+		[HttpGet("{id}/reactions")]
+		public async Task<IActionResult> GetReactionByCommentId(Guid id)
+		{
+			var result = await _reactionService.GetReactionByCommentId(id);
+			return Ok(result);
+		}
+	}
 }

@@ -15,7 +15,7 @@ namespace Service.Core;
 
 public interface IReactionService
 {
-	Task<Guid> CreateReaction(ReactionCreateModel model, string userId);
+	Task<Guid> CreateReaction(ReactionCreateModel model, Guid commentId, string userId);
 	Task<ReactionNumberViewModel> GetReactionByCommentId(Guid id);
 	
 }
@@ -31,7 +31,7 @@ public class ReactionService : IReactionService
 		_mapper = mapper;
 	}
 
-	public async Task<Guid> CreateReaction(ReactionCreateModel model, string userId)
+	public async Task<Guid> CreateReaction(ReactionCreateModel model, Guid commentId, string userId)
 	{
 		using (var transaction = _dataContext.Database.BeginTransaction())
 		{
@@ -41,7 +41,7 @@ public class ReactionService : IReactionService
 
 				reaction.CreatedBy = new Guid(userId);
 				reaction.UserId = new Guid(userId);
-				reaction.CommentId = model.CommentId;
+				reaction.CommentId = commentId;
 
 				await _dataContext.Reaction.AddAsync(reaction);
 

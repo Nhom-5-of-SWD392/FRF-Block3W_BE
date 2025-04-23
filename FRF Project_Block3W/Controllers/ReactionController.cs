@@ -17,9 +17,14 @@ public class ReactionController : ControllerBase
 		_reactionService = reactionService;
 	}
 
+	/*
 	[HttpPost]
 	public async Task<IActionResult> CreateReaction([FromBody] ReactionCreateModel model)
 	{
+		if (!ModelState.IsValid)
+		{
+			return BadRequest(ModelState);
+		}
 		var userId = User.Claims.GetUserIdFromJwtToken();
 		var result = await _reactionService.CreateReaction(model, userId);
 		return Ok(result);
@@ -31,4 +36,5 @@ public class ReactionController : ControllerBase
 		var result = await _reactionService.GetReactionByCommentId(id);
 		return Ok(result);
 	}
+	*/
 }
