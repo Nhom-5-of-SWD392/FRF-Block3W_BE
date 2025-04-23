@@ -16,10 +16,10 @@ namespace Service.Core;
 
 public interface IFavoriteService
 {
-	Task<Guid> CreateFavorite(FavoriteCreateModel model, string userId);
+	Task<Guid> CreateFavorite(Guid postId, string userId);
 	Task<Favorite> GetById(Guid id);
 	Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel model, string userId, string role);
-
+	Task<Guid> RemovePostFromFavorite(Guid postId,string userId);
 }
 public class FavoriteService : IFavoriteService
 {
@@ -36,7 +36,7 @@ public class FavoriteService : IFavoriteService
 		_userService = userService;
 	}
 
-	public async Task<Guid> CreateFavorite(FavoriteCreateModel model, string userId)
+	public async Task<Guid> CreateFavorite(Guid postId, string userId)
 	{
 		using (var transaction = _dataContext.Database.BeginTransaction())
 		{
@@ -47,12 +47,12 @@ public class FavoriteService : IFavoriteService
 					throw new Exception(ErrorMessage.Unauthorize);
 				}
 					
-				//Create favorite entity
-				var favorite = _mapper.Map<FavoriteCreateModel, Favorite>(model);
-
-				favorite.CreatedBy = new Guid(userId);
-				favorite.UserId = new Guid(userId);
-				favorite.PostId = new Guid(model.PostId.ToString());
+				Favorite favorite = new Favorite()
+				{
+					CreatedBy = new Guid(userId),
+					UserId = new Guid(userId),
+					PostId = postId,				
+				};
 
 				await _dataContext.Favorite.AddAsync(favorite);
 			
@@ -121,6 +121,28 @@ public class FavoriteService : IFavoriteService
 			};
 
 			return pagingData;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+
+	public async Task<Guid> RemovePostFromFavorite(Guid postId, string userId)
+	{
+		try
+		{
+			var favorite = _dataContext.Favorite
+				.FirstOrDefault(t => !t.IsDeleted && t.PostId == postId && t.UserId == new Guid(userId));
+			if (favorite == null)
+			{
+				throw new AppException(ErrorMessage.FavoriteNotFound);
+			}
+
+			_dataContext.Favorite.Remove(favorite);
+			await _dataContext.SaveChangesAsync();
+			return favorite.Id;
 		}
 		catch (Exception e)
 		{

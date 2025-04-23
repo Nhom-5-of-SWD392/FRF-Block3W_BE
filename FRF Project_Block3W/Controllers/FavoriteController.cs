@@ -24,15 +24,27 @@ public class FavoriteController : ControllerBase
 		return Ok(data);
 	}
 
-	[HttpPost]
-	public async Task<IActionResult> Create([FromBody] FavoriteCreateModel model)
+	[HttpPost("{id}")]
+	public async Task<IActionResult> Create(Guid id)
 	{
 		if (!ModelState.IsValid)
 		{
 			return BadRequest();
 		}
 		var userId = User.Claims.GetUserIdFromJwtToken();
-		var data = await _favoriteService.CreateFavorite(model, userId);
+		var data = await _favoriteService.CreateFavorite(id, userId);
+		return Ok(data);
+	}
+
+	[HttpDelete("{id}")]
+	public async Task<IActionResult> RemovePostFromFavorite(Guid id)
+	{
+		if (!ModelState.IsValid)
+		{
+			return BadRequest();
+		}
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		var data = await _favoriteService.RemovePostFromFavorite(id, userId);
 		return Ok(data);
 	}
 
