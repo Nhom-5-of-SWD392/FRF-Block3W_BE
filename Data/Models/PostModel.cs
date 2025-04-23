@@ -20,12 +20,19 @@ public class PostViewModel : BaseModel
 	public List<MediaViewModel> Medias { get; set; } = new();
 }
 
-public class PostCreateModel
+public class PostInputModel
 {
 	public string? Title { get; set; }
 	public string? Content { get; set; }
 	public List<Guid>? Topics { get; set; }
 	public List<IFormFile>? Medias { get; set; }
+}
+
+public class PostCreateModel
+{
+    public string? Title { get; set; }
+    public string? Content { get; set; }
+    public Guid PostById { get; set; }
 }
 
 public class PostEditModel

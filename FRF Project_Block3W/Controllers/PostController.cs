@@ -96,7 +96,7 @@ public class PostController : ControllerBase
     {
         var userId = User.Claims.GetUserIdFromJwtToken();
 
-        var model = new PostCreateModel
+        var model = new PostInputModel
         {
             Title = title,
             Content = content,

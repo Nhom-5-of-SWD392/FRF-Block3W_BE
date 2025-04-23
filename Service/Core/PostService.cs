@@ -12,7 +12,7 @@ namespace Service.Core;
 public interface IPostService
 {
 	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId, string role);
-	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
+    Task<Guid> CreateFullPost(string userId, PostInputModel model);
 	Task<Guid> SoftDelete(string userId,Guid id);
 	Task<Guid> HardDelete(string userId,Guid id);
     Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostApproveQueryModel query);
@@ -43,7 +43,7 @@ public class PostService : IPostService
 
 	}
 
-    public async Task<Guid> CreateFullPost(string userId, PostCreateModel model)
+    public async Task<Guid> CreateFullPost(string userId, PostInputModel model)
     {
         using (var transaction = await _dataContext.Database.BeginTransactionAsync())
         {
@@ -54,13 +54,18 @@ public class PostService : IPostService
                     throw new AppException(ErrorMessage.Unauthorize);
                 }
 
-                var userGuid = new Guid(userId);    
+                var userGuid = new Guid(userId);
 
-                var postData = _mapper.Map<PostCreateModel, Post>(model);
+                var newPost = new PostCreateModel
+                {
+                    Title = model.Title,
+                    Content = model.Content,
+                    PostById = userGuid,
+                };
+
+                var postData = _mapper.Map<PostCreateModel, Post>(newPost);
 
                 postData.CreatedBy = userGuid;
-
-                postData.PostById = userGuid;
 
                 await _dataContext.Post.AddAsync(postData);
 
