@@ -75,6 +75,7 @@ public static class ErrorMessage
     public static string UserNameValid = "Tài khoản phải có ít nhất 4 ký tự và không chứa khoảng trắng.";
     public static string UserNameExist = "Tài khoản đã tồn tại.";
     public static string BioValid = "Tiểu sử chỉ được tối đa 250 ký tự.";
+    public static string IsModerator = "Bạn không có quyền duyệt bài đăng.";
 
     //Quiz
     public static string QuizExist = "Bài kiểm tra đã tồn tại!";
@@ -96,6 +97,8 @@ public static class ErrorMessage
     //Post
     public static string PostNotFound = "Không tìm thấy bài viết.";
     public static string PostNotMatchWithUser = "Bài viết không khớp với người dùng.";
+    public static string PostAlreadyConfirm = "Bài viết này đã được duyệt hoặc từ chối trước đó.";
+    public static string NotAccessEdit = "Bạn không có quyền chỉnh sửa bài viết này.";
 
     //Media
     public static string MediaNotFound = "Không tìm thấy Media.";

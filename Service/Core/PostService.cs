@@ -5,6 +5,7 @@ using Data.Entities;
 using Data.Enum;
 using Data.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Service.Utilities;
@@ -16,7 +17,6 @@ public interface IPostService
 {
 	Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel model, string userId, string role);
 	Task<Guid> CreateFullPost(string userId, PostCreateModel model);
-	Task<Post> GetById (Guid id);
 	Task<Guid> SoftDelete(string userId,Guid id);
 	Task<Guid> HardDelete(string userId,Guid id);
     Task<PagingModel<PostViewModel>> GetAllApprovedPostsAsync(PostApproveQueryModel query);
@@ -27,6 +27,7 @@ public interface IPostService
     Task<string> VerifyPost(bool isConfirm, Guid postId,string userId);
     Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model);
     Task<IEnumerable<CommentResponseModel>> GetCommentsByPostIdAsync(Guid postId);
+    Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, bool isApproved);
 }
 public class PostService : IPostService
 {
@@ -166,6 +167,8 @@ public class PostService : IPostService
                     Title = post.Title,
                     Status = post.Status,
                     PostById = post.PostById,
+                    CreatedBy = post.CreatedBy,
+                    UpdatedBy = post.UpdatedBy,
                     ConfirmBy = post.ComfirmById,
                     Topics = post.PostTopic?.Select(pt => new TopicViewModel
                     {
@@ -210,7 +213,24 @@ public class PostService : IPostService
 
             IQueryable<Post> queryable;
 
-            
+            if (role == UserRole.Administrator.ToString())
+            {
+                queryable = _dataContext.Post
+                    .Where(p => !p.IsDeleted)
+                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias)
+                    .AsQueryable();
+
+                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+                var filters = new Dictionary<string, string>();
+                if (query.Status.HasValue)
+                    filters.Add("Status", query.Status.ToString());
+
+                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+            }
+            else
+            {
                 queryable = _dataContext.Post
                     .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
                     .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
@@ -219,12 +239,12 @@ public class PostService : IPostService
 
                 queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
 
-				var filters = new Dictionary<string, string>();
-				if (query.Status.HasValue)
-					filters.Add("Status", query.Status.ToString());
+                var filters = new Dictionary<string, string>();
+                if (query.Status.HasValue)
+                    filters.Add("Status", query.Status.ToString());
 
-				queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
-			
+                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+            }
 
             var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
@@ -235,6 +255,8 @@ public class PostService : IPostService
                 Status = post.Status,
                 PostById = post.PostById,
                 ConfirmBy = post.ComfirmById,
+                CreatedBy = post.CreatedBy,
+                UpdatedBy = post.UpdatedBy,
                 Topics = post.PostTopic?.Select(pt => new TopicViewModel
                 {
                     Id = pt.TopicId,
@@ -365,14 +387,14 @@ public class PostService : IPostService
         try
         {
             var post = await _dataContext.Post
-            .Include(p => p.PostBy)!
-            .Include(p => p.PostIngredients)!
-                .ThenInclude(pi => pi.Ingredient)!
-            .Include(p => p.PostTopic)!
-                .ThenInclude(pt => pt.Topic)
-            .Include(p => p.Medias)
-            .Include(p => p.Instructions)
-            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+                .Include(p => p.PostBy)!
+                .Include(p => p.PostIngredients)!
+                    .ThenInclude(pi => pi.Ingredient)!
+                .Include(p => p.PostTopic)!
+                    .ThenInclude(pt => pt.Topic)
+                .Include(p => p.Medias)
+                .Include(p => p.Instructions)
+                .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
 
             if (post == null)
                 throw new AppException(ErrorMessage.PostNotFound);
@@ -383,17 +405,17 @@ public class PostService : IPostService
                 Title = post.Title,
                 Content = post.Content,
                 Status = post.Status.ToString(),
-                PostByName = post.PostBy?.FirstName + " " + post.PostBy?.LastName ?? "Unknown",
+                PostByName = post.PostBy?.FirstName + " " + post.PostBy!.LastName,
 
                 Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
                 {
                     Id = pi.Id,
-                    Name = pi.Ingredient?.Name ?? "Unknown",
+                    Name = pi.Ingredient!.Name,
                     Quantity = pi.Quantity,
                     Unit = pi.Unit
                 }).ToList() ?? new(),
 
-                Topics = post.PostTopic?.Select(pt => pt.Topic?.Name ?? "Unnamed Topic").ToList() ?? new(),
+                Topics = post.PostTopic?.Select(pt => pt.Topic!.Name).ToList() ?? new(),
 
                 MediaUrls = post.Medias?.Select(m => new MediaResponse
                 {
@@ -664,76 +686,41 @@ public class PostService : IPostService
         }
     }
 
-	/*
-     public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId, string role)
+    public async Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, bool isApproved)
     {
         try
         {
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(role))
+            if (string.IsNullOrEmpty(userId))
                 throw new AppException(ErrorMessage.Unauthorize);
 
-            IQueryable<Post> queryable;
+            var userGuid = Guid.Parse(userId);
 
-            if (role == UserRole.Administrator.ToString())
-            {
-                queryable = _dataContext.Post
-                    .Where(p => !p.IsDeleted)
-                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias)
-                    .AsQueryable();
+            var user = await _dataContext.User
+                .FirstOrDefaultAsync(u => !u.IsDeleted && u.Id == userGuid);
+            if (user == null)
+                throw new AppException(ErrorMessage.UserNotFound);
 
-                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            if (user.Role == UserRole.Member && !user.IsModerator)
+                throw new AppException(ErrorMessage.IsModerator);
 
-                var filters = new Dictionary<string, string>();
-                if (query.Status.HasValue)
-                    filters.Add("Status", query.Status.ToString());
+            var post = await _dataContext.Post
+                .FirstOrDefaultAsync(p => !p.IsDeleted && p.Id == postId);
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
 
-                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
-            }
-            else
-            {
-                queryable = _dataContext.Post
-                    .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias)
-                    .AsQueryable();
+            if (post.Status != PostStatus.Pending)
+                throw new AppException(ErrorMessage.PostAlreadyConfirm);
 
-                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-            }
+            post.Status = isApproved ? PostStatus.Approved : PostStatus.Rejected;
+            post.ComfirmById = userGuid;
+            post.UpdatedAt = DateTime.UtcNow;
+            post.UpdatedBy = userGuid;
 
-            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+            _dataContext.Post.Update(post);
 
-            var postView = data.Select(post => new PostViewModel
-            {
-                Id = post.Id,
-                Title = post.Title,
-                Status = post.Status,
-                PostById = post.PostById,
-                ConfirmBy = post.ComfirmById,
-                Topics = post.PostTopic?.Select(pt => new TopicViewModel
-                {
-                    Id = pt.TopicId,
-                    Name = pt.Topic?.Name
-                }).ToList() ?? new(),
+            await _dataContext.SaveChangesAsync();
 
-                Medias = post.Medias?
-                .Where(m => m.Type == MediaType.Image)
-                .Select(m => new MediaViewModel
-                {
-                    Url = m.Url,
-                    Type = m.Type
-                }).ToList() ?? new()
-
-            }).ToList();
-
-            return new PagingModel<PostViewModel>
-            {
-                PageIndex = data.CurrentPage,
-                PageSize = data.PageSize,
-                TotalCount = data.TotalCount,
-                TotalPages = data.TotalPages,
-                pagingData = postView
-            };
+            return post.Id;
         }
         catch (Exception e)
         {
@@ -741,5 +728,41 @@ public class PostService : IPostService
             throw new Exception(e.Message);
         }
     }
-     */
+
+    public async Task<Guid> EditPostAsync(Guid postId, PostEditModel model, string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            var userGuid = Guid.Parse(userId);
+
+            var post = await _dataContext.Post
+                .FirstOrDefaultAsync(p => !p.IsDeleted && p.Id == postId);
+
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
+
+            if (post.PostById != userGuid)
+                throw new AppException(ErrorMessage.NotAccessEdit);
+
+            post.Title = model.Title;
+            post.Content = model.Content;
+            post.Status = PostStatus.EditedPendingApproval;
+            post.UpdatedAt = DateTime.UtcNow;
+            post.ComfirmById = null;
+
+            _dataContext.Post.Update(post);
+
+            await _dataContext.SaveChangesAsync();
+
+            return post.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
 }

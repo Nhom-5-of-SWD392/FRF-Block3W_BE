@@ -68,7 +68,7 @@ public class PostController : ControllerBase
 		return Ok(data);
 	}
 
-    [HttpGet("{id}")]
+    [HttpGet("{id}/post-details")]
     public async Task<IActionResult> GetPostDetail(Guid id)
     {
         var result = await _postService.GetPostDetailAsync(id);
@@ -134,6 +134,16 @@ public class PostController : ControllerBase
     public async Task<IActionResult> GetPostComments(Guid id)
     {
         var result = await _postService.GetCommentsByPostIdAsync(id);
+
+        return Ok(result);
+    }
+
+    [HttpPut("{id}/confirm-post")]
+    public async Task<IActionResult> ApproveOrRejectPostAsync(Guid id, [FromQuery] bool isApproved)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result =  await _postService.ApproveOrRejectPostAsync(userId, id, isApproved);
 
         return Ok(result);
     }

@@ -27,6 +27,14 @@ public class PostCreateModel
 	public List<IFormFile>? Media { get; set; }
 }
 
+public class PostEditModel
+{
+    public string? Title { get; set; }
+    public string? Content { get; set; }
+    public List<TopicAddToPostModel> Topics { get; set; } = new();
+    public List<IFormFile>? Media { get; set; }
+}
+
 public class PostDetailModel : BaseModel
 {
 	public string? Title { get; set; }
@@ -60,15 +68,14 @@ public class PostApproveQueryModel : QueryStringParameters
 
 public class PostDetailResponse
 {
+    public List<string> Topics { get; set; } = new();
+    public List<MediaResponse> MediaUrls { get; set; } = new();
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string PostByName { get; set; } = string.Empty;
-
     public List<IngredientDetail> Ingredients { get; set; } = new();
-    public List<string> Topics { get; set; } = new();
-    public List<MediaResponse> MediaUrls { get; set; } = new();
     public List<InstructionResponse> Instructions { get; set; } = new();
 }
 
@@ -92,4 +99,10 @@ public class InstructionResponse
 	public Guid Id { get; set; }
     public string Content { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+}
+
+public class ConfirmPost
+{
+    public Guid PostId { get; set; }
+    public bool IsApproved { get; set; }
 }
