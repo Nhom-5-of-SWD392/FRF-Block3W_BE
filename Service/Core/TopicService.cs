@@ -12,8 +12,9 @@ public interface ITopicService
 	Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query);
 	Task<Guid> Create(string userId,TopicCreateModel model);
 	Task<Guid> Update(string userId,Guid id,TopicUpdateModel model);
-	Task<Guid> SoftDelete(Guid id);
-	Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
+	Task<Guid> Delete(Guid id);
+
+    Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
 }
 public class TopicService : ITopicService
 {
@@ -73,7 +74,7 @@ public class TopicService : ITopicService
 		}
 	}
 
-	public async Task<Guid> SoftDelete(Guid id)
+	public async Task<Guid> Delete(Guid id)
 	{
 		try
 		{
@@ -82,10 +83,7 @@ public class TopicService : ITopicService
 			{
 				throw new AppException(ErrorMessage.TopicNotFound);
 			}
-
-			data.IsDeleted = true;
-
-			_dataContext.Topic.Update(data);
+			_dataContext.Topic.Remove(data);
 
 			await _dataContext.SaveChangesAsync();
 
@@ -98,44 +96,58 @@ public class TopicService : ITopicService
 		}
 	}
 
-	public async Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query)
-	{
-		try
-		{
-			var queryTopic = _dataContext.Topic
-				.Where(x => !x.IsDeleted);
+    public async Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query)
+    {
+        try
+        {
+            var queryTopic = _dataContext.Topic
+                .Where(x => !x.IsDeleted)
+                .Include(t => t.PostTopics)!
+                    .ThenInclude(pt => pt.Post)
+                        .ThenInclude(p => p.Medias)
+                .AsQueryable();
 
             queryTopic = queryTopic.SearchByKeyword(t => t.Name, query.Search);
 
-			var sortedData = _sortHelpers.ApplySort(queryTopic, query.OrderBy!);
-			var data = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+            var sortedData = _sortHelpers.ApplySort(queryTopic, query.OrderBy!);
 
-			var topicView = data.Select(topic =>
-			{
-				var topicViewModel = _mapper.Map<Topic, TopicViewModel>(topic);
-				return topicViewModel;
-			}).ToList();
+            var data = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-			var pagingData = new PagingModel<TopicViewModel>()
-			{
-				PageIndex = data.CurrentPage,
-				PageSize = data.PageSize,
-				TotalCount = data.TotalCount,
-				TotalPages = data.TotalPages,
-				pagingData = topicView
-			};
-			return pagingData;
+            var topicView = data.Select(topic =>
+            {
+                var topicViewModel = _mapper.Map<Topic, TopicViewModel>(topic);
 
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			
-			throw new Exception(e.Message);
-		}
-	}
+                var matchedPost = topic.PostTopics?
+                    .Select(pt => pt.Post)
+                    .Where(post => post != null && post.PostTopic?.Count == 1)
+                    .FirstOrDefault();
 
-	public async Task<Guid> Update(string userId,Guid id, TopicUpdateModel model)
+                var imageUrl = matchedPost?.Medias?.FirstOrDefault()?.Url;
+
+                topicViewModel.ImageUrl = imageUrl!;
+
+                return topicViewModel;
+            }).ToList();
+
+            var pagingData = new PagingModel<TopicViewModel>()
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = topicView
+            };
+
+            return pagingData;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
+    public async Task<Guid> Update(string userId,Guid id, TopicUpdateModel model)
 	{
 		try
 		{
@@ -166,27 +178,42 @@ public class TopicService : ITopicService
 
     public async Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId)
     {
-		try
-		{
+        try
+        {
             var topic = await _dataContext.Topic
-				.Include(t => t.PostTopics!)
-					.ThenInclude(pt => pt.Post!)
-						.ThenInclude(p => p.PostBy)
-				.FirstOrDefaultAsync(t => t.Id == topicId);
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.PostBy)
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.PostTopic)
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.Medias)
+                .FirstOrDefaultAsync(t => t.Id == topicId && !t.IsDeleted);
 
             if (topic == null)
                 throw new AppException(ErrorMessage.TopicNotFound);
+
+            var matchedPost = topic.PostTopics!
+                .Select(pt => pt.Post!)
+                .FirstOrDefault(post => post.PostTopic?.Count == 1 && post.PostTopic.First().TopicId == topicId);
+
+            var imageUrl = matchedPost?.Medias?.FirstOrDefault()?.Url;
 
             var result = new PostTopicResponse
             {
                 Id = topic.Id,
                 Name = topic.Name,
+                ImageUrl = imageUrl,
                 Posts = topic.PostTopics!.Select(pt => new PostResponse
                 {
                     Id = pt.Post!.Id,
                     Title = pt.Post.Title,
                     Content = pt.Post.Content,
-                    AuthorName = pt.Post.PostBy?.FirstName + pt.Post.PostBy?.LastName ?? "Thành viên ẩn danh"
+                    AuthorName = !string.IsNullOrEmpty(pt.Post.PostBy?.FirstName)
+                        ? pt.Post.PostBy!.FirstName + " " + pt.Post.PostBy.LastName
+                        : "Thành viên ẩn danh"
                 }).ToList()
             };
 
@@ -198,5 +225,6 @@ public class TopicService : ITopicService
             throw new Exception(e.Message);
         }
     }
+
 
 }

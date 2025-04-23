@@ -5,7 +5,8 @@ namespace Data.Models;
 
 public class TopicViewModel : BaseModel
 {
-	[Required]
+    public string ImageUrl { get; set; } = string.Empty;
+    [Required]
 	public string? Name { get; set; }
 }
 
@@ -43,6 +44,7 @@ public class PostTopicResponse
 {
     public Guid Id { get; set; }
     public string? Name { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; } = string.Empty;
     public List<PostResponse> Posts { get; set; } = new();
 }
 

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using CloudinaryDotNet.Actions;
 using Data.EFCore;
 using Data.Entities;
 using Data.Enum;
@@ -29,7 +30,7 @@ public interface IUserService
     Task<Guid> RegisterAsync(RegisterUserModel model);
     Task<Guid> RegisterModeratorAsync(string userId);
     Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model);
-    Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(RequestQueryModel query);
+    Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(string userId, string role, RequestQueryModel query);
     Task<string> UpdateAvatarImage(string userId, IFormFile file);
 }
 public class UserService : IUserService
@@ -298,7 +299,6 @@ public class UserService : IUserService
         }
     }
 
-
     public async Task<Guid> Delete(Guid id)
     {
         var data = await GetById(id);
@@ -475,9 +475,6 @@ public class UserService : IUserService
             var existingApplication = await _dataContext.ModeratorApplication
                 .FirstOrDefaultAsync(x => x.RegisterById == userGuid && x.Status == ApplicationStatus.Pending);
 
-            if (existingApplication != null)
-                throw new AppException(ErrorMessage.AlreadyApplyModerator);
-
             var interviewQuizzes = await _dataContext.Quiz
                 .Where(q => q.Type == QuizType.Interview && !q.IsDeleted)
                 .ToListAsync();
@@ -487,6 +484,10 @@ public class UserService : IUserService
 
             var random = new Random();
             var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
+
+            if (existingApplication != null)
+                //throw new AppException(ErrorMessage.AlreadyApplyModerator + $" Bài quiz của bạn{selectedQuiz.Id}");
+                return selectedQuiz.Id;
 
             var quizResult = new QuizResult
             {
@@ -510,7 +511,7 @@ public class UserService : IUserService
 
             await _dataContext.SaveChangesAsync();
 
-            return quizResult.Id;
+            return selectedQuiz.Id;
         }
         catch (Exception e)
         {
@@ -558,26 +559,53 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(RequestQueryModel query)
+    public async Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(string userId, string role, RequestQueryModel query)
     {
         try
         {
-            var queryRequest = _dataContext.ModeratorApplication
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            IQueryable<ModeratorApplication> queryRequest;
+
+            if (role == UserRole.Administrator.ToString())
+            {
+                queryRequest = _dataContext.ModeratorApplication
                 .Include(m => m.Registrant)
                 .Include(m => m.Confirmer)
                 .Include(m => m.QuizResult)
                 .Where(m => !m.IsDeleted);
 
-            queryRequest = queryRequest.SearchByKeyword(r => r.Registrant.FirstName + " " + r.Registrant.LastName, query.Search);
+                queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);
 
-            var filters = new Dictionary<string, string>();
+                var filters = new Dictionary<string, string>();
 
-            if (query.Status.HasValue)
-            {
-                filters.Add("Status", query.Status.ToString());
+                if (query.Status.HasValue)
+                {
+                    filters.Add("Status", query.Status.ToString());
+                }
+
+                queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
             }
+            else
+            {
+                queryRequest = _dataContext.ModeratorApplication
+                .Include(m => m.Registrant)
+                .Include(m => m.Confirmer)
+                .Include(m => m.QuizResult)
+                .Where(m => !m.IsDeleted && m.CreatedBy == Guid.Parse(userId));
 
-            queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+                queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);
+
+                var filters = new Dictionary<string, string>();
+
+                if (query.Status.HasValue)
+                {
+                    filters.Add("Status", query.Status.ToString());
+                }
+
+                queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+            }
 
             var sortedData = _sortRequestHelper.ApplySort(queryRequest, query.OrderBy!);
 
@@ -621,7 +649,6 @@ public class UserService : IUserService
             throw new AppException(e.Message);
         }
     }
-
 
     public async Task<string> UpdateAvatarImage(string userId, IFormFile file)
     {

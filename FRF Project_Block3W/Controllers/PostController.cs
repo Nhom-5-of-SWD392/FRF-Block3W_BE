@@ -3,6 +3,7 @@ using FRF_Project_Block3W.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
+using System.Text.Json;
 
 namespace FRF_Project_Block3W.Controllers;
 
@@ -49,7 +50,7 @@ public class PostController : ControllerBase
 		return Ok(data);
 	}
 
-	[HttpPatch("{id}/verify")]
+	[HttpPut("{id}/verify")]
 	public async Task<IActionResult> VerifyPost(Guid id,bool isConfirm)
 	{
         var userId =User.Claims.GetUserIdFromJwtToken();
@@ -76,19 +77,38 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
+    //[HttpPost]
+    //public async Task<IActionResult> CreatePostWithMedia([FromForm]PostCreateModel model)
+    //{
+    //    var userId = User.Claims.GetUserIdFromJwtToken();
+
+    //    var result = await _postService.CreateFullPost(userId, model);
+
+    //    return Ok(result);
+    //}
+
     [HttpPost]
-    public async Task<IActionResult> CreatePostWithMedia([FromForm] PostCreateModel model)
+    public async Task<IActionResult> CreatePostWithMedia(
+        [FromForm] string title,
+        [FromForm] string content,
+        [FromForm] List<Guid> topics,
+        [FromForm] List<IFormFile> medias)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
         var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var model = new PostCreateModel
+        {
+            Title = title,
+            Content = content,
+            Topics = topics ?? new(),
+            Medias = medias
+        };
 
         var result = await _postService.CreateFullPost(userId, model);
 
         return Ok(result);
     }
+
 
     [HttpPost("{id}/medias")]
     public async Task<IActionResult> AddMediaAsync(Guid id, List<IFormFile> file)

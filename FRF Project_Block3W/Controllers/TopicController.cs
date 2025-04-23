@@ -57,15 +57,15 @@ public class TopicController : ControllerBase
 
 		var userId = User.Claims.GetUserIdFromJwtToken();  
 
-		var data = await _topicService.Update(userId,id, model);
+		var data = await _topicService.Update(userId, id, model);
 
 		return Ok(data);
 	}
 
-	[HttpPatch("id")]
-	public async Task<IActionResult> SoftDelete(Guid id)
+	[HttpDelete("id")]
+	public async Task<IActionResult> Delete(Guid id)
 	{
-		var data = await _topicService.SoftDelete(id);
+		var data = await _topicService.Delete(id);
 
 		return Ok(data);
 	}

@@ -58,18 +58,20 @@ public class PostService : IPostService
                     throw new AppException(ErrorMessage.Unauthorize);
                 }
 
+                var userGuid = new Guid(userId);    
+
                 var postData = _mapper.Map<PostCreateModel, Post>(model);
 
-                postData.CreatedBy = new Guid(userId);
+                postData.CreatedBy = userGuid;
 
-                postData.PostById = new Guid(userId);
+                postData.PostById = userGuid;
 
                 await _dataContext.Post.AddAsync(postData);
 
                 if (model.Topics != null && model.Topics.Count > 0)
                 {
                     var existingTopicIds = await _dataContext.Topic
-                        .Where(t => model.Topics.Select(mt => mt.Id).Contains(t.Id))
+                        .Where(t => model.Topics.Select(mt => mt).Contains(t.Id))
                         .Select(t => t.Id)
                         .ToListAsync();
 
@@ -79,7 +81,7 @@ public class PostService : IPostService
                         {
                             PostId = postData.Id,
                             TopicId = topicId,
-                            CreatedBy = new Guid(userId)
+                            CreatedBy = userGuid
                         };
                         await _dataContext.PostTopic.AddAsync(postTopic);
                     }
@@ -90,9 +92,9 @@ public class PostService : IPostService
                     }
                 }
 
-                if (model.Media != null && model.Media.Count > 0)
+                if (model.Medias != null && model.Medias.Count > 0)
                 {
-                    foreach (var file in model.Media!)
+                    foreach (var file in model.Medias!)
                     {
                         var contentType = file.ContentType.ToLower();
                         MediaType mediaType;
@@ -165,6 +167,7 @@ public class PostService : IPostService
                 {
                     Id = post.Id,
                     Title = post.Title,
+                    Content = post.Content,
                     Status = post.Status,
                     PostById = post.PostById,
                     CreatedBy = post.CreatedBy,
@@ -252,6 +255,7 @@ public class PostService : IPostService
             {
                 Id = post.Id,
                 Title = post.Title,
+                Content = post.Content,
                 Status = post.Status,
                 PostById = post.PostById,
                 ConfirmBy = post.ComfirmById,
@@ -604,9 +608,11 @@ public class PostService : IPostService
 			}
 
             post.Status = isConfirm ? PostStatus.Approved : PostStatus.Rejected;
+
             post.ComfirmById = user.Id;
 
             _dataContext.Post.Update(post);  
+
 			await _dataContext.SaveChangesAsync();
 
 			return $"Status of Post {postId.ToString()} is now {post.Status}";

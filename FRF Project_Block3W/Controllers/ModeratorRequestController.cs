@@ -19,7 +19,12 @@ public class ModeratorRequestController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllRequestAsync([FromQuery] RequestQueryModel model)
     {
-        var result = await _userService.GetAllApplicationsAsync(model);
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var role = User.Claims.GetUserRoleFromJwtToken();
+
+        var result = await _userService.GetAllApplicationsAsync(userId, role, model);
+
         return Ok(result);
     }
 
