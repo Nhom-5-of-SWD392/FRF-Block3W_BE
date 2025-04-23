@@ -210,24 +210,7 @@ public class PostService : IPostService
 
             IQueryable<Post> queryable;
 
-            if (role == UserRole.Administrator.ToString())
-            {
-                queryable = _dataContext.Post
-                    .Where(p => !p.IsDeleted)
-                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias)
-                    .AsQueryable();
-
-                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-
-                var filters = new Dictionary<string, string>();
-                if (query.Status.HasValue)
-                    filters.Add("Status", query.Status.ToString());
-
-                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
-            }
-            else
-            {
+            
                 queryable = _dataContext.Post
                     .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
                     .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
@@ -235,7 +218,13 @@ public class PostService : IPostService
                     .AsQueryable();
 
                 queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-            }
+
+				var filters = new Dictionary<string, string>();
+				if (query.Status.HasValue)
+					filters.Add("Status", query.Status.ToString());
+
+				queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+			
 
             var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
@@ -674,4 +663,83 @@ public class PostService : IPostService
             throw new Exception(e.Message);
         }
     }
+
+	/*
+     public async Task<PagingModel<PostViewModel>> GetAllPostByUser(PostQueryModel query, string userId, string role)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(role))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            IQueryable<Post> queryable;
+
+            if (role == UserRole.Administrator.ToString())
+            {
+                queryable = _dataContext.Post
+                    .Where(p => !p.IsDeleted)
+                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias)
+                    .AsQueryable();
+
+                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+                var filters = new Dictionary<string, string>();
+                if (query.Status.HasValue)
+                    filters.Add("Status", query.Status.ToString());
+
+                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+            }
+            else
+            {
+                queryable = _dataContext.Post
+                    .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
+                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias)
+                    .AsQueryable();
+
+                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            }
+
+            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var postView = data.Select(post => new PostViewModel
+            {
+                Id = post.Id,
+                Title = post.Title,
+                Status = post.Status,
+                PostById = post.PostById,
+                ConfirmBy = post.ComfirmById,
+                Topics = post.PostTopic?.Select(pt => new TopicViewModel
+                {
+                    Id = pt.TopicId,
+                    Name = pt.Topic?.Name
+                }).ToList() ?? new(),
+
+                Medias = post.Medias?
+                .Where(m => m.Type == MediaType.Image)
+                .Select(m => new MediaViewModel
+                {
+                    Url = m.Url,
+                    Type = m.Type
+                }).ToList() ?? new()
+
+            }).ToList();
+
+            return new PagingModel<PostViewModel>
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = postView
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+     */
 }
