@@ -6,9 +6,9 @@ using Service.Core;
 
 namespace FRF_Project_Block3W.Controllers;
 
-[Authorize]
 [Route("api/quiz-result")]
 [ApiController]
+[Authorize]
 public class QuizResultController : ControllerBase
 {
     private readonly IQuizService _quizService;

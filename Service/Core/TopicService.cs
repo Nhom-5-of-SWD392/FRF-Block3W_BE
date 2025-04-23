@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Data.EFCore;
 using Data.Entities;
+using Data.Enum;
 using Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
@@ -13,7 +14,6 @@ public interface ITopicService
 	Task<Guid> Create(string userId,TopicCreateModel model);
 	Task<Guid> Update(string userId,Guid id,TopicUpdateModel model);
 	Task<Guid> Delete(Guid id);
-
     Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
 }
 public class TopicService : ITopicService
@@ -195,25 +195,36 @@ public class TopicService : ITopicService
             if (topic == null)
                 throw new AppException(ErrorMessage.TopicNotFound);
 
-            var matchedPost = topic.PostTopics!
+            var approvedPosts = topic.PostTopics!
                 .Select(pt => pt.Post!)
+                .Where(post => post.Status == PostStatus.Approved)
+                .ToList();
+
+            var matchedPost = approvedPosts
                 .FirstOrDefault(post => post.PostTopic?.Count == 1 && post.PostTopic.First().TopicId == topicId);
 
-            var imageUrl = matchedPost?.Medias?.FirstOrDefault()?.Url;
+            var imageUrl = matchedPost?.Medias
+                ?.FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url;
 
             var result = new PostTopicResponse
             {
                 Id = topic.Id,
                 Name = topic.Name,
                 ImageUrl = imageUrl,
-                Posts = topic.PostTopics!.Select(pt => new PostResponse
+                Posts = approvedPosts.Select(post =>
                 {
-                    Id = pt.Post!.Id,
-                    Title = pt.Post.Title,
-                    Content = pt.Post.Content,
-                    AuthorName = !string.IsNullOrEmpty(pt.Post.PostBy?.FirstName)
-                        ? pt.Post.PostBy!.FirstName + " " + pt.Post.PostBy.LastName
-                        : "Thành viên ẩn danh"
+                    var author = post.PostBy;
+                    return new PostResponse
+                    {
+                        Id = post.Id,
+                        Title = post.Title,
+                        Content = post.Content,
+                        Media = post.Medias
+                            .FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url,
+                        AuthorName = author != null
+                            ? $"{author.FirstName} {author.LastName}"
+                            : "Thành viên ẩn danh"
+                    };
                 }).ToList()
             };
 
@@ -225,6 +236,4 @@ public class TopicService : ITopicService
             throw new Exception(e.Message);
         }
     }
-
-
 }

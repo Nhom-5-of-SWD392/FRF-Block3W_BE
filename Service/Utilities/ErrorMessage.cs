@@ -109,6 +109,8 @@ public static class ErrorMessage
 
     //Favorite
     public static string FavoriteNotFound = "Không tìm thấy mục yêu thích.";
+    public static string AlreadyAddToFavoriteList = "Bạn đã yêu thích bài viết này rồi.";
+    public static string NotFoundPostFromFavoriteList = "Bài viết này chưa được thêm vào danh sách yêu thích.";
 
     //Ingredient
     public static string IngredientNotFound = "Không tìm thấy nguyên liệu.";
@@ -135,13 +137,13 @@ public static class ErrorMessage
     public static string UnsupportedFile = "Định dạng tệp không được hỗ trợ. Chỉ chấp nhận hình ảnh và video.";
     public static string OnlyAllowImage = "Chỉ chấp nhận hình ảnh.";
     public static string OnlyAdminAndModerator = "Chỉ Quản trị viên hoặc Người kiểm duyệt mới được phép thao tác này.";
-    public static string InvalidTokenOrEmail = "Invalid token or email.";
-    public static string TokenExpired = "Invalid or expired token.";
-    public static string ValidatePassword = "Password does not meet the required complexity standards:\n" +
-                                            "- At least 8 characters long\n" +
-                                            "- Include UPPERCASE and lowercase letters\n" +
-                                            "- At least one digit\n" +
-                                            "- At least one special character @#$%^&*!_";
+    public static string InvalidTokenOrEmail = "Mã thông báo hoặc email không hợp lệ.";
+    public static string TokenExpired = "Mã thông báo không hợp lệ hoặc đã hết hạn.";
+    public static string ValidatePassword = "Mật khẩu không đáp ứng các tiêu chuẩn phức tạp bắt buộc: " +
+                                            "-Có độ dài ít nhất 8 ký tự " +
+                                            "-Bao gồm CHỮ IN HOA và Chữ in thường " +
+                                            "-Có ít nhất một chữ số " +
+                                            "-Có ít nhất một ký tự đặc biệt @#$%^&*!_";
     public static string ConfirmPasswordNotMatch = "Mật khẩu xác nhận không khớp.";
 }
 

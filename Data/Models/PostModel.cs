@@ -72,6 +72,7 @@ public class PostApproveQueryModel : QueryStringParameters
 
     }
     public string? Search { get; set; }
+    public Guid? TopicId { get; set; }
 }
 
 public class PostDetailResponse
@@ -113,4 +114,16 @@ public class ConfirmPost
 {
     public Guid PostId { get; set; }
     public bool IsApproved { get; set; }
+}
+
+public class PostViewFavoriteModel : BaseModel
+{
+    public string? Title { get; set; }
+    public string? Content { get; set; }
+    public PostStatus? Status { get; set; }
+    public Guid PostById { get; set; }
+    public string PostBy { get; set; } = string.Empty;
+    public List<TopicViewModel> Topics { get; set; } = new();
+    public List<MediaViewModel> Medias { get; set; } = new();
+    public List<string> Ingredients { get; set; } = new();
 }

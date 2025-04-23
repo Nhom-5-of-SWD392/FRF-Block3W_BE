@@ -1,5 +1,6 @@
 ﻿using Data.Models;
 using FRF_Project_Block3W.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
@@ -7,6 +8,7 @@ namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/moderator-request")]
 [ApiController]
+[Authorize]
 public class ModeratorRequestController : ControllerBase
 {
     private readonly IUserService _userService;

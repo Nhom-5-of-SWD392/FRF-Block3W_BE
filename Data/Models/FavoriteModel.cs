@@ -8,10 +8,7 @@ namespace Data.Models;
 
 public class FavoriteViewModel : BaseModel
 {
-	public Guid? UserId { get; set; }
-	public string UserName { get; set; }
-
-	public List<PostViewModel> Posts { get; set; }
+	public List<PostViewFavoriteModel>? Posts { get; set; }
 }
 
 public class FavoriteCreateModel 

@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
 namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/ingredient")]
 [ApiController]
+[Authorize]
 public class IngredientController : ControllerBase
 {
     private readonly IIngredientService _ingredientService;

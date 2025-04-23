@@ -9,6 +9,7 @@ namespace FRF_Project_Block3W.Controllers
 {
     [Route("api/comment")]
     [ApiController]
+    [Authorize]
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;

@@ -10,7 +10,6 @@ public class IngredientViewModel : BaseModel
 public class IngredientCreateModel
 {
 	public string Name { get; set; } = string.Empty;
-	
 }
 
 public class IngredientUpdateModel

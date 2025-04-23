@@ -30,7 +30,12 @@ public class FilterHelper<T> : IFilterHelper<T>
 				posts = posts.Where(c => c.Status == status);
 			}
 
-			return posts as IQueryable<T>;
+            if (filters.ContainsKey("TopicId") && Guid.TryParse(filters["TopicId"], out Guid topicId))
+            {
+                posts = posts.Where(p => p.PostTopic.Any(pt => pt.TopicId == topicId));
+            }
+
+            return posts as IQueryable<T>;
 		}
 
 		return entities;

@@ -24,6 +24,8 @@ public interface IPostService
     Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model);
     Task<IEnumerable<CommentResponseModel>> GetCommentsByPostIdAsync(Guid postId);
     Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, bool isApproved);
+    Task<Guid> AddPostToFavoriteList(Guid postId, string userId);
+    Task<Guid> RemovePostFromFavoriteList(Guid postId, string userId);
 }
 public class PostService : IPostService
 {
@@ -160,6 +162,13 @@ public class PostService : IPostService
 
             queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
 
+            var filters = new Dictionary<string, string>();
+
+            if (query.TopicId.HasValue)
+                filters.Add("TopicId", query.TopicId.ToString());
+
+            queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+
             var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
             var postView = data.Select(post =>
@@ -217,38 +226,38 @@ public class PostService : IPostService
 
             IQueryable<Post> queryable;
 
-            if (role == UserRole.Administrator.ToString())
+            var userGuid = new Guid(userId);
+
+            var isAdmin = role == UserRole.Administrator.ToString();
+
+            var user = await _dataContext.User
+                .FirstOrDefaultAsync(u => !u.IsDeleted && u.Id == userGuid);
+
+            if (isAdmin || user!.IsModerator == true)
             {
                 queryable = _dataContext.Post
                     .Where(p => !p.IsDeleted)
-                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias)
-                    .AsQueryable();
-
-                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-
-                var filters = new Dictionary<string, string>();
-                if (query.Status.HasValue)
-                    filters.Add("Status", query.Status.ToString());
-
-                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+                    .Include(p => p.PostTopic)!
+                        .ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias);
             }
             else
             {
                 queryable = _dataContext.Post
-                    .Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-                    .Include(p => p.PostTopic)!.ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias)
-                    .AsQueryable();
-
-                queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
-
-                var filters = new Dictionary<string, string>();
-                if (query.Status.HasValue)
-                    filters.Add("Status", query.Status.ToString());
-
-                queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
+                    .Where(p => !p.IsDeleted && p.CreatedBy == userGuid)
+                    .Include(p => p.PostTopic)!
+                        .ThenInclude(pt => pt.Topic)
+                    .Include(p => p.Medias);
             }
+
+            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+
+            var filters = new Dictionary<string, string>();
+
+            if (query.Status.HasValue)
+                filters.Add("Status", query.Status.ToString());
+
+            queryable = _filterPostHelper.ApplyFilterPost(queryable, filters);
 
             var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
@@ -772,4 +781,80 @@ public class PostService : IPostService
             throw new Exception(e.Message);
         }
     }
+
+    public async Task<Guid> AddPostToFavoriteList(Guid postId, string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+                throw new Exception(ErrorMessage.Unauthorize);
+
+            var userGuid = new Guid(userId);
+
+            var post = await _dataContext.Post
+            .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
+
+            var existingFavorite = await _dataContext.Favorite
+            .AnyAsync(f => f.UserId == userGuid && f.PostId == postId);
+
+            if (existingFavorite)
+                throw new AppException(ErrorMessage.AlreadyAddToFavoriteList);
+
+            var favorite = new Favorite
+            {
+                CreatedBy = userGuid,
+                UserId = userGuid,
+                PostId = postId,
+            };
+
+            await _dataContext.Favorite.AddAsync(favorite);
+
+            await _dataContext.SaveChangesAsync();
+
+            return favorite.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
+    public async Task<Guid> RemovePostFromFavoriteList(Guid postId, string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            var userGuid = new Guid(userId);
+
+            var post = await _dataContext.Post
+                .FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted);
+
+            if (post == null)
+                throw new AppException(ErrorMessage.PostNotFound);
+
+            var favorite = await _dataContext.Favorite
+                .FirstOrDefaultAsync(f => f.PostId == postId && f.UserId == userGuid);
+
+            if (favorite == null)
+                throw new AppException(ErrorMessage.NotFoundPostFromFavoriteList);
+
+            _dataContext.Favorite.Remove(favorite);
+
+            await _dataContext.SaveChangesAsync();
+
+            return favorite.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
 }

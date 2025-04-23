@@ -1,25 +1,16 @@
 ﻿using AutoMapper;
 using Data.EFCore;
 using Data.Entities;
-using Data.Enum;
 using Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using System.Linq.Dynamic.Core;
 
 namespace Service.Core;
 
 public interface IFavoriteService
 {
-	Task<Guid> CreateFavorite(Guid postId, string userId);
-	Task<Favorite> GetById(Guid id);
-	Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel model, string userId, string role);
-	Task<Guid> RemovePostFromFavorite(Guid postId,string userId);
+	Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel model, string userId);
 }
 public class FavoriteService : IFavoriteService
 {
@@ -34,40 +25,6 @@ public class FavoriteService : IFavoriteService
 		_mapper = mapper;
 		_postService = postService;
 		_userService = userService;
-	}
-
-	public async Task<Guid> CreateFavorite(Guid postId, string userId)
-	{
-		using (var transaction = _dataContext.Database.BeginTransaction())
-		{
-			try
-			{
-				if (string.IsNullOrEmpty(userId))
-				{
-					throw new Exception(ErrorMessage.Unauthorize);
-				}
-					
-				Favorite favorite = new Favorite()
-				{
-					CreatedBy = new Guid(userId),
-					UserId = new Guid(userId),
-					PostId = postId,				
-				};
-
-				await _dataContext.Favorite.AddAsync(favorite);
-			
-				await _dataContext.SaveChangesAsync();
-				await transaction.CommitAsync();
-
-				return favorite.Id;
-			}
-			catch (Exception e)
-			{
-				Console.WriteLine(e);
-				await transaction.RollbackAsync();
-				throw new Exception(e.Message);
-			}
-		}
 	}
 
 	public async Task<Favorite> GetById(Guid id)
@@ -91,63 +48,89 @@ public class FavoriteService : IFavoriteService
 		}
 	}
 
-	public async Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel query, string userId, string role)
-	{
-		try
-		{
-			if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(role))
-			{
-				throw new AppException(ErrorMessage.Unauthorize);
-			}
+    public async Task<PagingModel<FavoriteViewModel>> GetFavoriteListByUser(FavoriteQueryModel query, string userId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
 
-			var queryable = _dataContext.Favorite
-				.Where(p => !p.IsDeleted && p.CreatedBy == new Guid(userId))
-				.Include(p => p.Post)
-				.AsQueryable();
+            var userGuid = new Guid(userId);
 
-			queryable = queryable.SearchByKeyword(p => p.Post.Title, query.Search);
+            var queryable = _dataContext.Favorite
+                .Where(f => !f.IsDeleted && f.CreatedBy == userGuid)
+                .Include(f => f.Post)!
+                    .ThenInclude(p => p.PostBy!)!
+                .Include(f => f.Post)!
+                    .ThenInclude(p => p.PostIngredients)!
+                        .ThenInclude(pt => pt.Ingredient)
+                .Include(f => f.Post)!
+                    .ThenInclude(p => p.PostTopic!)!
+                        .ThenInclude(pt => pt.Topic)
+                .Include(f => f.Post)!
+                    .ThenInclude(p => p.Medias)
+                .Where(f => f.Post != null && !f.Post.IsDeleted);
 
-			var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                queryable = queryable.Where(f => f.Post!.Title.Contains(query.Search));
+            }
 
-			var favoriteView = _mapper.Map<List<Favorite>, List<FavoriteViewModel>>(data.ToList());
+            var data = await queryable.ToPagedListAsync(query.PageIndex, query.PageSize);
 
-			var pagingData = new PagingModel<FavoriteViewModel>()
-			{
-				PageIndex = data.CurrentPage,
-				PageSize = data.PageSize,
-				TotalCount = data.TotalCount,
-				TotalPages = data.TotalPages,
-				pagingData = favoriteView
-			};
 
-			return pagingData;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw new Exception(e.Message);
-		}
-	}
+            var favoriteViewModels = data.Select(favorite => new FavoriteViewModel
+            {
+                Id = favorite.Id,
+                UpdatedBy = favorite.CreatedBy,
+                CreatedBy = favorite.UpdatedBy,
+                Posts = new List<PostViewFavoriteModel>
+                {
+                    new PostViewFavoriteModel
+                    {
+                        Id = favorite.Post!.Id,
+                        Title = favorite.Post.Title,
+                        Content = favorite.Post.Content,
+                        Status = favorite.Post.Status,
+                        PostById = favorite.Post.PostById,
+                        CreatedBy = favorite.Post.CreatedBy,
+                        UpdatedBy = favorite.Post.UpdatedBy,
+                        PostBy = favorite.Post.PostBy != null
+                            ? $"{favorite.Post.PostBy.FirstName} {favorite.Post.PostBy.LastName}"
+                            : "Thành viên ẩn danh",
+                        Topics = favorite.Post.PostTopic!.Select(pt => new TopicViewModel
+                        {
+                            Id = pt.Topic!.Id,
+                            Name = pt.Topic.Name,
+                            CreatedBy = pt.Topic!.CreatedBy,
+                            UpdatedBy = pt.Topic!.UpdatedBy,
+                        }).ToList(),
+                        Medias = favorite.Post.Medias?.Select(m => new MediaViewModel
+                        {
+                            Url = m.Url,
+                            Type = m.Type
+                        }).ToList() ?? new List<MediaViewModel>(),
+                        Ingredients = favorite.Post.PostIngredients?
+                            .Select(pi => pi.Ingredient!.Name)
+                            .Where(name => !string.IsNullOrEmpty(name))
+                            .ToList() ?? new List<string>()
+                    }
+                }
+            }).ToList();
 
-	public async Task<Guid> RemovePostFromFavorite(Guid postId, string userId)
-	{
-		try
-		{
-			var favorite = _dataContext.Favorite
-				.FirstOrDefault(t => !t.IsDeleted && t.PostId == postId && t.UserId == new Guid(userId));
-			if (favorite == null)
-			{
-				throw new AppException(ErrorMessage.FavoriteNotFound);
-			}
-
-			_dataContext.Favorite.Remove(favorite);
-			await _dataContext.SaveChangesAsync();
-			return favorite.Id;
-		}
-		catch (Exception e)
-		{
-			Console.WriteLine(e);
-			throw new Exception(e.Message);
-		}
-	}
+            return new PagingModel<FavoriteViewModel>
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = favoriteViewModels
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
 }

@@ -10,6 +10,7 @@ namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/post")]
 [ApiController]
+[Authorize]
 public class PostController : ControllerBase
 {
 	private readonly IPostService _postService;
@@ -164,6 +165,26 @@ public class PostController : ControllerBase
         var userId = User.Claims.GetUserIdFromJwtToken();
 
         var result =  await _postService.ApproveOrRejectPostAsync(userId, id, isApproved);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/favorite")]
+    public async Task<IActionResult> AddPostToFavoriteList(Guid id)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _postService.AddPostToFavoriteList(id, userId);
+
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}/favorite")]
+    public async Task<IActionResult> RemovePostFromFavoriteList(Guid id)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _postService.RemovePostFromFavoriteList(id, userId);
 
         return Ok(result);
     }

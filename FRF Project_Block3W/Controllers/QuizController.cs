@@ -2,11 +2,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 using Data.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/quiz")]
 [ApiController]
+[Authorize]
 public class QuizController : ControllerBase
 {
     private readonly IQuizService _quizService;

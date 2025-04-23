@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
 namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/quiz-range-score")]
 [ApiController]
+[Authorize]
 public class RangeScoreController : ControllerBase
 {
     private readonly IRangeScoreService _rangeScoreService;

@@ -7,6 +7,7 @@ using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Org.BouncyCastle.Ocsp;
 using Service.Utilities;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
@@ -486,7 +487,7 @@ public class UserService : IUserService
             var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
 
             if (existingApplication != null)
-                throw new AppException(ErrorMessage.AlreadyApplyModerator + $" Bài quiz của bạn{selectedQuiz.Id}");
+                throw new AppException(ErrorMessage.AlreadyApplyModerator);
 
             var quizResult = new QuizResult
             {
@@ -573,6 +574,7 @@ public class UserService : IUserService
                 .Include(m => m.Registrant)
                 .Include(m => m.Confirmer)
                 .Include(m => m.QuizResult)
+                    .ThenInclude(qr => qr.Quiz)
                 .Where(m => !m.IsDeleted);
 
                 queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);
@@ -621,14 +623,23 @@ public class UserService : IUserService
                 RegistrantEmail = reqs.Registrant?.Email,
                 ConfirmedById = reqs.ConfirmedById,
                 ConfirmerName = reqs.Confirmer != null ? reqs.Confirmer.FirstName + " " + reqs.Confirmer.LastName : null,
-
+                CreatedBy = reqs.CreatedBy,
+                UpdatedBy = reqs.UpdatedBy,
                 QuizResult = reqs.QuizResult != null
                     ? new QuizResultViewRequest
                     {
                         Id = reqs.QuizResult.Id,
                         FinalScore = reqs.QuizResult.FinalScore,
                         Result = reqs.QuizResult.Result,
-                        Status = reqs.QuizResult.Status
+                        Status = reqs.QuizResult.Status,
+                        CreatedBy = reqs.QuizResult.CreatedBy,
+                        UpdatedBy = reqs.QuizResult.UpdatedBy,
+                        Quizz = reqs.QuizResult.Quiz != null 
+                        ? new QuizzModel
+                        {
+                            QuizId = reqs.QuizResult.QuizId,
+                            QuizName = reqs.QuizResult.Quiz.Name,
+                        } : new QuizzModel()
                     }
                     : new QuizResultViewRequest()
             }).ToList();

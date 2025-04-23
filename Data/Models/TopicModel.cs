@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Data.Enum;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace Data.Models;
@@ -35,6 +36,17 @@ public class TopicQueryModel : QueryStringParameters
 	public string? Search { get; set; }
 }
 
+public class TopicQueryPostModel : QueryStringParameters
+{
+    public TopicQueryPostModel()
+    {
+        OrderBy = "CreateAt";
+    }
+
+    public string? Search { get; set; }
+    public PostStatus? Status { get; set; }
+}
+
 public class TopicAddToPostModel
 {
     public Guid Id { get; set; }
@@ -50,6 +62,7 @@ public class PostTopicResponse
 
 public class PostResponse
 {
+	public string? Media { get; set; }
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;

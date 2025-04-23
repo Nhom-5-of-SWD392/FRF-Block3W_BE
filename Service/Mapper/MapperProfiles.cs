@@ -40,10 +40,5 @@ public class MapperProfiles : Profile
 
 		//Favorite
 		CreateMap<FavoriteCreateModel, Favorite>();
-		CreateMap<Favorite, FavoriteViewModel>()
-	        .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-	        .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.UserName))
-	        .ForMember(dest => dest.Posts, opt => opt.MapFrom(src => new List<Post> { src.Post }));
-
 	}
 }

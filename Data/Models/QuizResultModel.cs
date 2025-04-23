@@ -53,6 +53,7 @@ public class QuizResultViewRequest : BaseModel
     public string Result { get; set; } = string.Empty;
     public QuizResultStatus Status { get; set; }
     public double FinalScore { get; set; }
+    public QuizzModel Quizz { get; set; } = new();
 }
 
 

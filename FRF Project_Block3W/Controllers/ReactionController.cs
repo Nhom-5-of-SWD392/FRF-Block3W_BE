@@ -1,5 +1,6 @@
 ﻿using Data.Models;
 using FRF_Project_Block3W.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 
@@ -7,6 +8,7 @@ namespace FRF_Project_Block3W.Controllers;
 
 [Route("api/reaction")]
 [ApiController]
+[Authorize]
 public class ReactionController : ControllerBase
 {
 	private readonly IReactionService _reactionService;
