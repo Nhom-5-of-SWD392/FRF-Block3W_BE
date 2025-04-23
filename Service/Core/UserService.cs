@@ -486,8 +486,7 @@ public class UserService : IUserService
             var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
 
             if (existingApplication != null)
-                //throw new AppException(ErrorMessage.AlreadyApplyModerator + $" Bài quiz của bạn{selectedQuiz.Id}");
-                return selectedQuiz.Id;
+                throw new AppException(ErrorMessage.AlreadyApplyModerator + $" Bài quiz của bạn{selectedQuiz.Id}");
 
             var quizResult = new QuizResult
             {

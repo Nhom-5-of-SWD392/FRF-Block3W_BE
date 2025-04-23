@@ -1,15 +1,11 @@
 ﻿using AutoMapper;
-using CloudinaryDotNet.Actions;
 using Data.EFCore;
 using Data.Entities;
 using Data.Enum;
 using Data.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Service.Utilities;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Service.Core;
 
