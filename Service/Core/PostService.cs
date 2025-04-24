@@ -6,6 +6,8 @@ using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
+using System.Linq.Expressions;
+using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace Service.Core;
 
@@ -161,7 +163,13 @@ public class PostService : IPostService
                 .Include(p => p.PostBy)
                 .AsQueryable();
 
-            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            //queryable = queryable.SearchByManyKeyword(query.Search,
+            //[
+            //    p => p.Title,
+            //    p => p.PostBy!.LastName,
+            //]);
+
+            queryable = queryable.SearchIncludingTopics(query.Search);
 
             var filters = new Dictionary<string, string>();
 
@@ -859,5 +867,4 @@ public class PostService : IPostService
             throw new Exception(e.Message);
         }
     }
-
 }

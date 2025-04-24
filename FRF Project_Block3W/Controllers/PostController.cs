@@ -22,6 +22,7 @@ public class PostController : ControllerBase
        
 	}
 
+    [AllowAnonymous]
     [HttpGet("public")]
     public async Task<IActionResult> GetAllApprovedPostsAsync([FromQuery] PostApproveQueryModel query)
     {
