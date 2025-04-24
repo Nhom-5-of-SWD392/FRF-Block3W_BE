@@ -594,6 +594,7 @@ public class UserService : IUserService
                 .Include(m => m.Registrant)
                 .Include(m => m.Confirmer)
                 .Include(m => m.QuizResult)
+                    .ThenInclude(qr => qr.Quiz)
                 .Where(m => !m.IsDeleted && m.CreatedBy == Guid.Parse(userId));
 
                 queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);

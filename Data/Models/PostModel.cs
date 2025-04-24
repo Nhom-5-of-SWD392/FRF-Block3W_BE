@@ -14,7 +14,7 @@ public class PostViewModel : BaseModel
 	public string? Title { get; set; }
 	public string? Content { get; set; }
     public PostStatus? Status { get; set; }
-	public Guid PostById { get; set; }
+	public string? PostBy { get; set; }
 	public Guid? ConfirmBy { get; set; }
 	public List<TopicViewModel> Topics { get; set; } = new();
 	public List<MediaViewModel> Medias { get; set; } = new();

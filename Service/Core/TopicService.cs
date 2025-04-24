@@ -219,7 +219,7 @@ public class TopicService : ITopicService
                         Id = post.Id,
                         Title = post.Title,
                         Content = post.Content,
-                        Media = post.Medias
+                        Media = post.Medias!
                             .FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url,
                         AuthorName = author != null
                             ? $"{author.FirstName} {author.LastName}"

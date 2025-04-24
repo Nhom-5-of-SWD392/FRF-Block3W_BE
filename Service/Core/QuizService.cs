@@ -444,12 +444,14 @@ public class QuizService : IQuizService
                 Status = result.Status,
                 Details = result.QuizDetails!.Select(d =>
                 {
+                    var question = d.QuizQuestion;
                     var questionType = d.QuizQuestion?.Type ?? QuestionType.MultipleChoice;
                     int maxScore = 0;
 
                     if (questionType == QuestionType.MultipleChoice)
                     {
-                        maxScore = d.QuizAnswer?.Score ?? 0;
+                        //maxScore = d.QuizAnswer?.Score ?? 0;
+                        maxScore = question?.QuizAnswers?.Max(a => a.Score) ?? 0;
                     }
                     else if (questionType == QuestionType.Essay)
                     {

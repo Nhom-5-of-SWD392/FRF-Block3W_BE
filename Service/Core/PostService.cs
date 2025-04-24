@@ -158,6 +158,7 @@ public class PostService : IPostService
                 .Include(p => p.PostTopic)!
                     .ThenInclude(pt => pt.Topic)
                 .Include(p => p.Medias)
+                .Include(p => p.PostBy)
                 .AsQueryable();
 
             queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
@@ -179,7 +180,7 @@ public class PostService : IPostService
                     Title = post.Title,
                     Content = post.Content,
                     Status = post.Status,
-                    PostById = post.PostById,
+                    PostBy = post.PostBy!.FirstName + " " + post.PostBy!.LastName,
                     CreatedBy = post.CreatedBy,
                     UpdatedBy = post.UpdatedBy,
                     ConfirmBy = post.ComfirmById,
@@ -239,7 +240,8 @@ public class PostService : IPostService
                     .Where(p => !p.IsDeleted)
                     .Include(p => p.PostTopic)!
                         .ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias);
+                    .Include(p => p.Medias)
+                    .Include(p => p.PostBy);
             }
             else
             {
@@ -267,7 +269,7 @@ public class PostService : IPostService
                 Title = post.Title,
                 Content = post.Content,
                 Status = post.Status,
-                PostById = post.PostById,
+                PostBy = post.PostBy!.FirstName + " " + post.PostBy.LastName,
                 ConfirmBy = post.ComfirmById,
                 CreatedBy = post.CreatedBy,
                 UpdatedBy = post.UpdatedBy,
@@ -438,7 +440,8 @@ public class PostService : IPostService
                     Type = m.Type
                 }).ToList() ?? new(),
 
-                Instructions = post.Instructions?.OrderBy(i => i.CreatedAt).Select(i => new InstructionResponse
+                Instructions = post.Instructions?.OrderBy(i => i.CreatedAt)
+                .Select(i => new InstructionResponse
                 {
                     Id = i.Id,
                     Content = i.Content,

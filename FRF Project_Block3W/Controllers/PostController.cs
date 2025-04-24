@@ -121,7 +121,7 @@ public class PostController : ControllerBase
     }
 
     [HttpPost("{id}/instruction")]
-    public async Task<IActionResult> AddInstructionToPostAsync(Guid id, InstructionRequestModel instructions)
+    public async Task<IActionResult> AddInstructionToPostAsync(Guid id, [FromForm]InstructionRequestModel instructions)
     {
         var result = await _postService.AddInstructionToPostAsync(id, instructions);
 
