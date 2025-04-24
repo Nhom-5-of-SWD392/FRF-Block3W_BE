@@ -44,5 +44,23 @@ public static class QueryableExtensions
             )
         );
     }
+
+
+	// Extension method to search posts by title or ingredient name
+	public static IQueryable<Post> SearchByTitleOrIngredient(this IQueryable<Post> query, string keyword)
+	{
+		if (string.IsNullOrWhiteSpace(keyword))
+			return query;
+
+		var lowerKeyword = keyword.Trim().ToLower();
+
+		return query.Where(p =>
+			p.Title.ToLower().Contains(lowerKeyword) ||
+			p.PostIngredients!.Any(pi =>
+				pi.Ingredient != null &&
+				pi.Ingredient.Name.ToLower().Contains(lowerKeyword)
+			)
+		);
+	}
 }
 

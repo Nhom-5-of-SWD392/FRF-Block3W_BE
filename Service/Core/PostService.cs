@@ -249,7 +249,9 @@ public class PostService : IPostService
                     .Include(p => p.PostTopic)!
                         .ThenInclude(pt => pt.Topic)
                     .Include(p => p.Medias)
-                    .Include(p => p.PostBy);
+                    .Include(p => p.PostIngredients)!
+						.ThenInclude(pi => pi.Ingredient)
+					.Include(p => p.PostBy);
             }
             else
             {
@@ -257,12 +259,14 @@ public class PostService : IPostService
                     .Where(p => !p.IsDeleted && p.CreatedBy == userGuid)
                     .Include(p => p.PostTopic)!
                         .ThenInclude(pt => pt.Topic)
-                    .Include(p => p.Medias);
+						.Include(p => p.PostIngredients)!
+						.ThenInclude(pi => pi.Ingredient)
+					.Include(p => p.Medias);
             }
 
-            queryable = queryable.SearchByKeyword(p => p.Title, query.Search);
+            queryable = queryable.SearchByTitleOrIngredient(query.Search);
 
-            var filters = new Dictionary<string, string>();
+			var filters = new Dictionary<string, string>();
 
             if (query.Status.HasValue)
                 filters.Add("Status", query.Status.ToString());
