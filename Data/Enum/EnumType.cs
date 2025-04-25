@@ -43,7 +43,8 @@
     public enum QuizResultStatus
     {
         Pending = 0,
-        Completed = 1
+        Submitted = 1,
+        Completed = 2
     }
 
     public enum PostStatus

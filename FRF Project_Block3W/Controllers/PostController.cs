@@ -1,9 +1,11 @@
-﻿using Data.Models;
+﻿using CloudinaryDotNet.Actions;
+using Data.Models;
 using FRF_Project_Block3W.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Service.Core;
 using System.Text.Json;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace FRF_Project_Block3W.Controllers;
 
@@ -43,21 +45,22 @@ public class PostController : ControllerBase
 		return Ok(result);
 	}
 
-	[HttpPatch("{id}/soft-delete")]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdatePost(Guid id, [FromBody] PostUpdateModel model)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        var result = await _postService.UpdatePostAsync(userId, id, model);
+
+        return Ok(result);
+    }
+
+
+    [HttpPatch("{id}/soft-delete")]
 	public async Task<IActionResult> SoftDelete(Guid id)
 	{
 		var userId = User.Claims.GetUserIdFromJwtToken();
 		var data = await _postService.SoftDelete(userId, id);
-
-		return Ok(data);
-	}
-
-	[HttpPut("{id}/verify")]
-	public async Task<IActionResult> VerifyPost(Guid id,bool isConfirm)
-	{
-        var userId =User.Claims.GetUserIdFromJwtToken();
-
-		var data = await _postService.VerifyPost(isConfirm, id, userId);
 
 		return Ok(data);
 	}
@@ -78,16 +81,6 @@ public class PostController : ControllerBase
 
         return Ok(result);
     }
-
-    //[HttpPost]
-    //public async Task<IActionResult> CreatePostWithMedia([FromForm]PostCreateModel model)
-    //{
-    //    var userId = User.Claims.GetUserIdFromJwtToken();
-
-    //    var result = await _postService.CreateFullPost(userId, model);
-
-    //    return Ok(result);
-    //}
 
     [HttpPost]
     public async Task<IActionResult> CreatePostWithMedia(
@@ -129,6 +122,17 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{id}/instructions")]
+    public async Task<IActionResult> UpdateInstructionsFromPostAsync(Guid id, [FromForm] InstructionUpdateModel instructions)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+
+        await _postService.UpdateInstructionFromPostAsync(userId, id, instructions);
+
+        return NoContent();
+    }
+
+
     [HttpPost("{id}/ingredients")]
     public async Task<IActionResult> AddIngredientToPostAsync(Guid id, List<IngredientDetailModel> ingredients)
     {
@@ -161,11 +165,11 @@ public class PostController : ControllerBase
     }
 
     [HttpPut("{id}/confirm-post")]
-    public async Task<IActionResult> ApproveOrRejectPostAsync(Guid id, [FromQuery] bool isApproved)
+    public async Task<IActionResult> ApproveOrRejectPostAsync(Guid id, ConfirmPost model)
     {
         var userId = User.Claims.GetUserIdFromJwtToken();
 
-        var result =  await _postService.ApproveOrRejectPostAsync(userId, id, isApproved);
+        var result =  await _postService.ApproveOrRejectPostAsync(userId, id, model);
 
         return Ok(result);
     }

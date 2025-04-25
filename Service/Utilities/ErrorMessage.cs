@@ -83,7 +83,8 @@ public static class ErrorMessage
     public static string QuizTypeOnlyMulChoice = "Chỉ được phép sử dụng câu hỏi trắc nghiệm trong bài kiểm tra loại Quiz.";
     public static string MulChoiceMustHaveAnswer = "Câu hỏi trắc nghiệm phải có ít nhất một câu trả lời.";
     public static string QuizResultNotFound = "Không tìm thấy kết quả bài kiểm tra.";
-    public static string QuizResultNotFoundOrEvaluated = "Không tìm thấy kết quả hoặc kết quả đã được chấm.";
+    public static string QuizResultEvaluated = "Bài quiz đã được chấm.";
+    public static string QuizResultNotSummit = "Không tìm thấy bài quiz hoặc bài quiz chưa được người đăng ký thực hiện";
     public static string OnlyEssayCanGrade = "Chỉ câu hỏi tự luận mới được chấm điểm.";
 
     //Question
@@ -96,7 +97,7 @@ public static class ErrorMessage
 
     //Post
     public static string PostNotFound = "Không tìm thấy bài viết.";
-    public static string PostNotMatchWithUser = "Bài viết không khớp với người dùng.";
+    public static string PostNotMatchWithUser = "Bài viết không tồn tại hoặc bài viết không phải do người dùng đăng.";
     public static string PostAlreadyConfirm = "Bài viết này đã được duyệt hoặc từ chối trước đó.";
     public static string NotAccessEdit = "Bạn không có quyền chỉnh sửa bài viết này.";
 

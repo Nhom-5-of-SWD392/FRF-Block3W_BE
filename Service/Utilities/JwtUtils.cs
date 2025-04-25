@@ -42,6 +42,7 @@ public class JwtUtils : IJwtUtils
             Avatar = user.AvatarUrl,
             Email = user.Email,
             Role = user.Role.ToString(),
+            IsModerator = user.IsModerator.ToString(),
             ExpiresInMilliseconds = (long)(expirationTime - DateTime.UtcNow).TotalMilliseconds
         };
         return jwtToken;

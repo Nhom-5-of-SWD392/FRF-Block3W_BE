@@ -1,4 +1,5 @@
 ﻿using Data.Enum;
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
@@ -13,13 +14,15 @@ public class TopicViewModel : BaseModel
 
 public class TopicCreateModel
 {
-	[Required]
+    public IFormFile? ImageUrl { get; set; }
+    [Required]
 	public string? Name { get; set; }
 }
 
 public class TopicUpdateModel
 {
-	[Required]
+    public IFormFile? ImageUrl { get; set; }
+    [Required]
 	public string? Name { get; set; }
 
 	[JsonIgnore]
@@ -66,6 +69,8 @@ public class PostResponse
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
+    public string AuthorAvatar { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
+    public List<string> Ingredients { get; set; } = new();
 }
 

@@ -45,8 +45,6 @@ public static class QueryableExtensions
         );
     }
 
-
-	// Extension method to search posts by title or ingredient name
 	public static IQueryable<Post> SearchByTitleOrIngredient(this IQueryable<Post> query, string keyword)
 	{
 		if (string.IsNullOrWhiteSpace(keyword))

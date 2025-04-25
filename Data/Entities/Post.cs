@@ -1,5 +1,4 @@
 ﻿using Data.Enum;
-using Microsoft.AspNetCore.Routing.Constraints;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,8 +15,10 @@ public class Post : BaseEntities
 
     public PostStatus Status { get; set; } = PostStatus.Pending;
 
-	//Foreign Keys
-	public Guid PostById { get; set; }
+	public string? Reason { get; set; }
+
+    //Foreign Keys
+    public Guid PostById { get; set; }
 	[ForeignKey("PostById")]
 	public User? PostBy { get; set; }
     public Guid? ComfirmById { get; set; }
@@ -30,5 +31,4 @@ public class Post : BaseEntities
 	public IList<Comment>? Comments { get; set; }
 	public IList<Media>? Medias { get; set; }
 	public IList<Instruction>? Instructions { get; set; }
-
 }

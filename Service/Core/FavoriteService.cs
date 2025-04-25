@@ -98,6 +98,7 @@ public class FavoriteService : IFavoriteService
                         PostBy = favorite.Post.PostBy != null
                             ? $"{favorite.Post.PostBy.FirstName} {favorite.Post.PostBy.LastName}"
                             : "Thành viên ẩn danh",
+                        AuthorImage = favorite.Post.PostBy!.AvatarUrl,
                         Topics = favorite.Post.PostTopic!.Select(pt => new TopicViewModel
                         {
                             Id = pt.Topic!.Id,

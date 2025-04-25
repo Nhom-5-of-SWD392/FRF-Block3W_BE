@@ -27,7 +27,7 @@ public class TopicController : ControllerBase
 	}
 
 	[HttpPost]
-	public async Task<IActionResult> CreateTopic([FromBody] TopicCreateModel model)
+	public async Task<IActionResult> CreateTopic([FromForm] TopicCreateModel model)
 	{
 		if (!ModelState.IsValid)
 		{
@@ -41,6 +41,7 @@ public class TopicController : ControllerBase
 		return Ok(data);
 	}
 
+    [AllowAnonymous]
     [HttpGet("{id}/posts")]
     public async Task<IActionResult> GetPostsByTopicAsync(Guid id)
     {
@@ -50,7 +51,7 @@ public class TopicController : ControllerBase
     }
 
     [HttpPut("id")]
-	public async Task<IActionResult> UpdateTopic(Guid id, [FromBody] TopicUpdateModel model)
+	public async Task<IActionResult> UpdateTopic(Guid id, [FromForm] TopicUpdateModel model)
 	{
 		if (!ModelState.IsValid)
 		{

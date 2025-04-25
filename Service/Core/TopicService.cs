@@ -11,8 +11,8 @@ namespace Service.Core;
 public interface ITopicService
 {
 	Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query);
-	Task<Guid> Create(string userId,TopicCreateModel model);
-	Task<Guid> Update(string userId,Guid id,TopicUpdateModel model);
+	Task<Guid> Create(string userId, TopicCreateModel model);
+	Task<Guid> Update(string userId, Guid id, TopicUpdateModel model);
 	Task<Guid> Delete(Guid id);
     Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
 }
@@ -21,12 +21,14 @@ public class TopicService : ITopicService
 	private readonly DataContext _dataContext;
 	private readonly IMapper _mapper;
 	private readonly ISortHelpers<Topic> _sortHelpers;
+    private readonly ICloudinaryService _cloudinaryService;
 
-	public TopicService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers)
+    public TopicService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers, ICloudinaryService cloudinaryService)
 	{
 		_dataContext = dataContext;
 		_mapper = mapper;
 		_sortHelpers = sortHelpers;
+        _cloudinaryService = cloudinaryService;
 	}
     public async Task<Topic> GetById(Guid id)
     {
@@ -57,9 +59,25 @@ public class TopicService : ITopicService
 				throw new AppException(ErrorMessage.Unauthorize);
 			}
 
-			var data = _mapper.Map<TopicCreateModel, Topic>(model);
+            string? imageUrl = null;
 
-			data.CreatedBy = new Guid(userId);
+            var data = _mapper.Map<TopicCreateModel, Topic>(model);
+
+            string path = $"{data.Name}/topic";
+
+            if (model.ImageUrl != null)
+            {
+                if (!model.ImageUrl.ContentType.StartsWith("image/"))
+                {
+                    throw new AppException(ErrorMessage.OnlyAllowImage);
+                }
+
+                imageUrl = await _cloudinaryService.UploadImageAsync(model.ImageUrl, path);
+            }
+
+            data.CreatedBy = new Guid(userId);
+
+            data.ImageUrl = imageUrl;
 
 			await _dataContext.Topic.AddAsync(data);
 
@@ -124,7 +142,14 @@ public class TopicService : ITopicService
 
                 var imageUrl = matchedPost?.Medias?.FirstOrDefault()?.Url;
 
-                topicViewModel.ImageUrl = imageUrl!;
+                if(matchedPost == null)
+                {
+                    topicViewModel.ImageUrl = topic.ImageUrl!;
+                }
+                else
+                {
+                    topicViewModel.ImageUrl = imageUrl!;
+                }
 
                 return topicViewModel;
             }).ToList();
@@ -147,7 +172,7 @@ public class TopicService : ITopicService
         }
     }
 
-    public async Task<Guid> Update(string userId,Guid id, TopicUpdateModel model)
+    public async Task<Guid> Update(string userId, Guid id, TopicUpdateModel model)
 	{
 		try
 		{
@@ -159,11 +184,27 @@ public class TopicService : ITopicService
 			if (data == null)
 				throw new AppException(ErrorMessage.TopicNotFound);
 
-			var updateData = _mapper.Map(model,data);
+            string? imageUrl = null;
 
-			updateData.UpdatedBy = new Guid(userId);
+            string path = $"{data.Name}/topic";
 
-			_dataContext.Topic.Update(updateData);
+            if (model.ImageUrl != null)
+            {
+                if (!model.ImageUrl.ContentType.StartsWith("image/"))
+                {
+                    throw new AppException(ErrorMessage.OnlyAllowImage);
+                }
+
+                imageUrl = await _cloudinaryService.UploadImageAsync(model.ImageUrl, path);
+            }
+
+            var updateData = _mapper.Map(model, data);
+
+            updateData.ImageUrl = imageUrl;
+
+            updateData.UpdatedBy = new Guid(userId);
+
+            _dataContext.Topic.Update(updateData);
 
 			await _dataContext.SaveChangesAsync();
 
@@ -190,6 +231,10 @@ public class TopicService : ITopicService
                 .Include(t => t.PostTopics!)
                     .ThenInclude(pt => pt.Post!)
                         .ThenInclude(p => p.Medias)
+                .Include(t => t.PostTopics!)
+                .ThenInclude(pt => pt.Post!)
+                    .ThenInclude(p => p.PostIngredients!)
+                        .ThenInclude(pi => pi.Ingredient)
                 .FirstOrDefaultAsync(t => t.Id == topicId && !t.IsDeleted);
 
             if (topic == null)
@@ -206,6 +251,13 @@ public class TopicService : ITopicService
             var imageUrl = matchedPost?.Medias
                 ?.FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url;
 
+            var ingredientNames = approvedPosts
+            .SelectMany(post => post.PostIngredients ?? new List<PostIngredient>())
+            .Where(pi => pi.Ingredient != null)
+            .Select(pi => pi.Ingredient!.Name)
+            .Distinct()
+            .ToList();
+
             var result = new PostTopicResponse
             {
                 Id = topic.Id,
@@ -214,6 +266,11 @@ public class TopicService : ITopicService
                 Posts = approvedPosts.Select(post =>
                 {
                     var author = post.PostBy;
+                    var ingredientNames = post.PostIngredients?
+                        .Where(pi => pi.Ingredient != null)
+                        .Select(pi => pi.Ingredient!.Name)
+                        .Distinct()
+                        .ToList() ?? new List<string>();
                     return new PostResponse
                     {
                         Id = post.Id,
@@ -221,11 +278,15 @@ public class TopicService : ITopicService
                         Content = post.Content,
                         Media = post.Medias!
                             .FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url,
+                        AuthorAvatar = author != null
+                            ? $"{author.AvatarUrl}"
+                            : string.Empty,
                         AuthorName = author != null
                             ? $"{author.FirstName} {author.LastName}"
-                            : "Thành viên ẩn danh"
+                            : "Thành viên ẩn danh",
+                        Ingredients = ingredientNames
                     };
-                }).ToList()
+                }).ToList(),
             };
 
             return result;

@@ -6,8 +6,6 @@ using Data.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Service.Utilities;
-using System.Linq.Expressions;
-using static Microsoft.Extensions.Logging.EventSource.LoggingEventSource;
 
 namespace Service.Core;
 
@@ -21,13 +19,14 @@ public interface IPostService
 	Task<string> AddMediaAsync(Guid postId, List<IFormFile> file);
     Task<PostDetailResponse> GetPostDetailAsync(Guid postId);
     Task<string> AddInstructionToPostAsync(Guid postId, InstructionRequestModel instruction);
+    Task UpdateInstructionFromPostAsync(string userId, Guid postId, InstructionUpdateModel instruction);
     Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients);
-    Task<string> VerifyPost(bool isConfirm, Guid postId,string userId);
     Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model);
     Task<IEnumerable<CommentResponseModel>> GetCommentsByPostIdAsync(Guid postId);
-    Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, bool isApproved);
-    Task<Guid> AddPostToFavoriteList(Guid postId, string userId);
+    Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, ConfirmPost model);
+    Task<string> AddPostToFavoriteList(Guid postId, string userId);
     Task<Guid> RemovePostFromFavoriteList(Guid postId, string userId);
+    Task<Guid> UpdatePostAsync(string userId, Guid id, PostUpdateModel model);
 }
 public class PostService : IPostService
 {
@@ -433,8 +432,9 @@ public class PostService : IPostService
                 Title = post.Title,
                 Content = post.Content,
                 Status = post.Status.ToString(),
+                Reason = post.Reason,
                 PostByName = post.PostBy?.FirstName + " " + post.PostBy!.LastName,
-
+                AuthorImage = post.PostBy!.AvatarUrl,
                 Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
                 {
                     Id = pi.Id,
@@ -442,9 +442,7 @@ public class PostService : IPostService
                     Quantity = pi.Quantity,
                     Unit = pi.Unit
                 }).ToList() ?? new(),
-
                 Topics = post.PostTopic?.Select(pt => pt.Topic!.Name).ToList() ?? new(),
-
                 MediaUrls = post.Medias?.Select(m => new MediaResponse
                 {
                     Id = m.Id,
@@ -565,6 +563,54 @@ public class PostService : IPostService
         }
     }
 
+    public async Task UpdateInstructionFromPostAsync(string userId, Guid postId, InstructionUpdateModel instruction)
+    {
+        try
+        {
+            var userGuid = Guid.Parse(userId);
+
+            var post = await _dataContext.Post
+                .Include(p => p.Instructions)
+                .FirstOrDefaultAsync(p => p.Id == postId && p.PostById == userGuid);
+
+            if (post == null)
+                throw new Exception(ErrorMessage.PostNotMatchWithUser);
+
+            var existingInstruction = post.Instructions!
+                .FirstOrDefault(i => i.Id == instruction.Id);
+
+            if (existingInstruction == null)
+                throw new Exception(ErrorMessage.InstructionNotFound);
+
+            if (instruction.Image != null)
+            {
+                var path = $"{post.Title}/instruction-images";
+                var imageUrl = await _cloudinaryService.UploadImageAsync(instruction.Image, path);
+                existingInstruction.ImageUrl = imageUrl;
+            }
+
+            if (!string.IsNullOrWhiteSpace(instruction.Content))
+            {
+                existingInstruction.Content = instruction.Content;
+            }
+
+            existingInstruction.UpdatedAt = DateTime.UtcNow;
+
+            existingInstruction.UpdatedBy = userGuid;
+
+            _dataContext.Instruction.Update(existingInstruction);
+
+            post.Status = PostStatus.EditedPendingApproval;
+
+            await _dataContext.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
     public async Task<string> AddIngredientToPostAsync(Guid postId, List<IngredientDetailModel> ingredients)
     {
         using (var transaction = await _dataContext.Database.BeginTransactionAsync())
@@ -607,48 +653,6 @@ public class PostService : IPostService
             }
         }
     }
-
-	public async Task<string> VerifyPost(bool isConfirm, Guid postId, string userId)
-	{
-        try
-        {
-			
-			if (string.IsNullOrEmpty(userId))
-			{
-				throw new AppException(ErrorMessage.Unauthorize);
-			}
-
-			User user = await _userService.GetById(new Guid(userId));
-
-			if (user.IsModerator == false || user.Role!=UserRole.Administrator)
-            {
-                throw new AppException(ErrorMessage.OnlyAdminAndModerator);
-			}
-
-            var post = await GetById(postId);
-
-			if (post == null)
-			{
-				throw new AppException(ErrorMessage.PostNotFound);
-			}
-
-            post.Status = isConfirm ? PostStatus.Approved : PostStatus.Rejected;
-
-            post.ComfirmById = user.Id;
-
-            _dataContext.Post.Update(post);  
-
-			await _dataContext.SaveChangesAsync();
-
-			return $"Status of Post {postId.ToString()} is now {post.Status}";
-		}
-        catch (Exception e)
-        {
-			Console.WriteLine(e);
-			throw new Exception(e.Message);
-			
-        }
-	}
 
     public async Task<Guid> AddCommentAsync(string userId, Guid postId, CommentCreateModel model)
     {
@@ -717,7 +721,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, bool isApproved)
+    public async Task<Guid> ApproveOrRejectPostAsync(string userId, Guid postId, ConfirmPost model)
     {
         try
         {
@@ -742,7 +746,8 @@ public class PostService : IPostService
             if (post.Status != PostStatus.Pending)
                 throw new AppException(ErrorMessage.PostAlreadyConfirm);
 
-            post.Status = isApproved ? PostStatus.Approved : PostStatus.Rejected;
+            post.Status = model.IsApproved ? PostStatus.Approved : PostStatus.Rejected;
+            post.Reason = model.Reason;
             post.ComfirmById = userGuid;
             post.UpdatedAt = DateTime.UtcNow;
             post.UpdatedBy = userGuid;
@@ -760,31 +765,23 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Guid> EditPostAsync(Guid postId, PostEditModel model, string userId)
+    public async Task<Guid> UpdatePostAsync(string userId, Guid id, PostUpdateModel model)
     {
         try
         {
-            if (string.IsNullOrEmpty(userId))
-                throw new AppException(ErrorMessage.Unauthorize);
-
             var userGuid = Guid.Parse(userId);
 
             var post = await _dataContext.Post
-                .FirstOrDefaultAsync(p => !p.IsDeleted && p.Id == postId);
+                .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted && p.PostById == userGuid);
 
             if (post == null)
-                throw new AppException(ErrorMessage.PostNotFound);
+                throw new Exception(ErrorMessage.PostNotFound);
 
-            if (post.PostById != userGuid)
-                throw new AppException(ErrorMessage.NotAccessEdit);
+            var mapper = _mapper.Map(model, post);
 
-            post.Title = model.Title;
-            post.Content = model.Content;
-            post.Status = PostStatus.EditedPendingApproval;
-            post.UpdatedAt = DateTime.UtcNow;
-            post.ComfirmById = null;
+            mapper.Status = PostStatus.EditedPendingApproval;
 
-            _dataContext.Post.Update(post);
+            _dataContext.Post.Update(mapper);
 
             await _dataContext.SaveChangesAsync();
 
@@ -797,7 +794,7 @@ public class PostService : IPostService
         }
     }
 
-    public async Task<Guid> AddPostToFavoriteList(Guid postId, string userId)
+    public async Task<string> AddPostToFavoriteList(Guid postId, string userId)
     {
         try
         {
@@ -813,23 +810,26 @@ public class PostService : IPostService
                 throw new AppException(ErrorMessage.PostNotFound);
 
             var existingFavorite = await _dataContext.Favorite
-            .AnyAsync(f => f.UserId == userGuid && f.PostId == postId);
+                .FirstOrDefaultAsync(f => f.UserId == userGuid && f.PostId == postId);
 
-            if (existingFavorite)
-                throw new AppException(ErrorMessage.AlreadyAddToFavoriteList);
-
-            var favorite = new Favorite
+            if (existingFavorite == null)
             {
-                CreatedBy = userGuid,
-                UserId = userGuid,
-                PostId = postId,
-            };
+                var favorite = new Favorite
+                {
+                    CreatedBy = userGuid,
+                    UserId = userGuid,
+                    PostId = postId,
+                };
 
-            await _dataContext.Favorite.AddAsync(favorite);
+                await _dataContext.Favorite.AddAsync(favorite);
+            }
+
+            existingFavorite!.UpdatedAt = DateTime.Now;
+            existingFavorite!.UpdatedBy = userGuid;
 
             await _dataContext.SaveChangesAsync();
 
-            return favorite.Id;
+            return "Đã lưu vào danh sách yêu thích!";
         }
         catch (Exception e)
         {

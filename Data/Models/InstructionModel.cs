@@ -20,3 +20,10 @@ public class InstructionCreateModel
     public string Content { get; set; } = string.Empty;
     public Guid PostId { get; set; }
 }
+
+public class InstructionUpdateModel
+{
+    public Guid? Id { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public IFormFile? Image { get; set; }
+}

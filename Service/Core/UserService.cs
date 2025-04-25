@@ -99,6 +99,7 @@ public class UserService : IUserService
                 new Claim(ClaimTypes.Email, user?.Email ?? ""),
                 new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
                 new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim("isModerator", user!.IsModerator.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
 
@@ -159,6 +160,7 @@ public class UserService : IUserService
                 new Claim(ClaimTypes.Email, user?.Email ?? ""),
                 new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
                 new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim("isModerator", user!.IsModerator.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
 
@@ -541,12 +543,18 @@ public class UserService : IUserService
             request.ConfirmedById = new Guid(confirmedId);
             request.UpdatedBy = new Guid(confirmedId);
             request.Status = model.IsApproved ? ApplicationStatus.Approved : ApplicationStatus.Rejected;
+            request.Reason = model.Reason;
 
             if (model.IsApproved)
             {
                 var user = request.Registrant!;
+
                 user.IsModerator = true;
+
+                _dataContext.User.Update(user);
             }
+
+            _dataContext.ModeratorApplication.Update(request);
 
             await _dataContext.SaveChangesAsync();
 

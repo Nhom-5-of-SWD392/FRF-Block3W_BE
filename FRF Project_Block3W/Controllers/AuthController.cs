@@ -79,7 +79,7 @@ public class AuthController : ControllerBase
 
             var data = await _userService.LoginWithGoogle(tokenResponse.IdToken!);
 
-            var redirectUrl = $"http://localhost:5173/oauth?token={data.TokenString}";
+            var redirectUrl = $"https://foodhub-fe.vercel.app/oauth?token={data.TokenString}";
 
             return Redirect(redirectUrl);
         }

@@ -33,9 +33,11 @@ public class MapperProfiles : Profile
 		//Post
 		CreateMap<PostCreateModel, Post>();
 		CreateMap<Post, PostViewModel>();
+        CreateMap<PostUpdateModel, Post>()
+            .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
 
-		//Reaction
-		CreateMap<ReactionCreateModel, Reaction>();
+        //Reaction
+        CreateMap<ReactionCreateModel, Reaction>();
 		CreateMap<Reaction, ReactionViewModel>();
 
 		//Favorite

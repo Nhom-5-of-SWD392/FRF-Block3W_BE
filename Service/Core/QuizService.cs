@@ -347,7 +347,7 @@ public class QuizService : IQuizService
 
             var quizResult = await _dataContext.QuizResult
                 .Include(qr => qr.QuizDetails)
-                .FirstOrDefaultAsync(qr => qr.QuizId == request.QuizId && qr.CreatedBy == userGuid);
+                .FirstOrDefaultAsync(qr => qr.QuizId == request.QuizId && qr.CreatedBy == userGuid && qr.Status == QuizResultStatus.Pending);
 
             if (quizResult == null)
                 throw new AppException(ErrorMessage.QuizResultNotFound);
@@ -391,7 +391,7 @@ public class QuizService : IQuizService
 
             quizResult.QuizDetails = newDetails;
             quizResult.FinalScore = isAutoEvaluated ? totalScore : 0;
-            quizResult.Status = isAutoEvaluated ? QuizResultStatus.Completed : QuizResultStatus.Pending;
+            quizResult.Status = isAutoEvaluated ? QuizResultStatus.Completed : QuizResultStatus.Submitted;
             quizResult.Result = isAutoEvaluated
                 ? GetRangeScore(quiz.QuizRangeScores!, totalScore)
                 : "Đang chờ đánh giá...";
@@ -560,8 +560,11 @@ public class QuizService : IQuizService
                     .ThenInclude(q => q.QuizRangeScores)
                 .FirstOrDefaultAsync(r => r.Id == model.QuizResultId && !r.IsDeleted);
 
-            if (result == null || result.Status != QuizResultStatus.Pending)
-                throw new AppException(ErrorMessage.QuizResultNotFoundOrEvaluated);
+            if (result == null || result.Status == QuizResultStatus.Pending)
+                throw new AppException(ErrorMessage.QuizResultNotSummit);
+
+            if (result.Status != QuizResultStatus.Submitted)
+                throw new AppException(ErrorMessage.QuizResultEvaluated);
 
             double finalScore = 0;
 
@@ -594,13 +597,6 @@ public class QuizService : IQuizService
             result.EvaluateById = evaluatorGuid;
             result.Status = QuizResultStatus.Completed;
             result.Result = GetRangeScore(result.Quiz!.QuizRangeScores!, finalScore);
-
-            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == result.UpdatedBy && !u.IsDeleted);
-            if (user == null)
-                throw new AppException(ErrorMessage.UserNotFound);
-
-            user.IsModerator = true;
-            _dataContext.Update(user);
 
             await _dataContext.SaveChangesAsync();
 

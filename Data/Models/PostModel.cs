@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Data.Models;
@@ -35,12 +36,12 @@ public class PostCreateModel
     public Guid PostById { get; set; }
 }
 
-public class PostEditModel
+public class PostUpdateModel
 {
     public string? Title { get; set; }
     public string? Content { get; set; }
-    public List<TopicAddToPostModel> Topics { get; set; } = new();
-    public List<IFormFile>? Media { get; set; }
+    [JsonIgnore]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class PostDetailModel : BaseModel
@@ -83,7 +84,9 @@ public class PostDetailResponse
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string? Reason { get; set; }
     public string PostByName { get; set; } = string.Empty;
+    public string AuthorImage { get; set; } = string.Empty;
     public List<IngredientDetail> Ingredients { get; set; } = new();
     public List<InstructionResponse> Instructions { get; set; } = new();
 }
@@ -112,8 +115,8 @@ public class InstructionResponse
 
 public class ConfirmPost
 {
-    public Guid PostId { get; set; }
     public bool IsApproved { get; set; }
+    public string? Reason { get; set; }
 }
 
 public class PostViewFavoriteModel : BaseModel
@@ -123,6 +126,7 @@ public class PostViewFavoriteModel : BaseModel
     public PostStatus? Status { get; set; }
     public Guid PostById { get; set; }
     public string PostBy { get; set; } = string.Empty;
+    public string AuthorImage { get; set; } = string.Empty;
     public List<TopicViewModel> Topics { get; set; } = new();
     public List<MediaViewModel> Medias { get; set; } = new();
     public List<string> Ingredients { get; set; } = new();
