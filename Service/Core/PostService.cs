@@ -28,6 +28,7 @@ public interface IPostService
     Task<Guid> RemovePostFromFavoriteList(Guid postId, string userId);
     Task<Guid> UpdatePostAsync(string userId, Guid id, PostUpdateModel model);
 	Task UpdateIngredientsAsync(Guid postId, string userId, List<IngredientUpdateModel> model);
+    Task RemoveTopicsFromPostAsync(Guid postId, string userId, List<Guid> topicIds);
 }
 public class PostService : IPostService
 {
@@ -746,8 +747,8 @@ public class PostService : IPostService
             if (post == null)
                 throw new AppException(ErrorMessage.PostNotFound);
 
-            if (post.Status != PostStatus.Pending)
-                throw new AppException(ErrorMessage.PostAlreadyConfirm);
+			if (post.Status != PostStatus.Pending || post.Status != PostStatus.EditedPendingApproval)
+				throw new AppException(ErrorMessage.PostAlreadyConfirm);
 
             post.Status = model.IsApproved ? PostStatus.Approved : PostStatus.Rejected;
             post.Reason = model.Reason;
@@ -919,6 +920,40 @@ public class PostService : IPostService
 			post.Status = PostStatus.EditedPendingApproval;
 
 			await _dataContext.SaveChangesAsync();
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
+	}
+
+	public async Task RemoveTopicsFromPostAsync(Guid postId, string userId, List<Guid> topicIds)
+	{
+		try
+		{
+			var userGuid = Guid.Parse(userId);
+
+			var post = await _dataContext.Post
+				.Include(p => p.PostTopic)!
+					.ThenInclude(pt => pt.Topic)
+				.FirstOrDefaultAsync(p => p.Id == postId && p.PostById == userGuid && !p.IsDeleted);
+
+			if (post == null)
+				throw new Exception(ErrorMessage.PostNotMatchWithUser);
+
+			var postTopics = post.PostTopic!
+				.Where(pt => !pt.IsDeleted && topicIds.Contains(pt.TopicId))
+				.ToList();
+
+			if (postTopics.Any())
+			{
+				_dataContext.PostTopic.RemoveRange(postTopics);
+
+				post.Status = PostStatus.EditedPendingApproval;
+
+				await _dataContext.SaveChangesAsync();
+			}
 		}
 		catch (Exception e)
 		{

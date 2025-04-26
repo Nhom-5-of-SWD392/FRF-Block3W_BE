@@ -204,4 +204,12 @@ public class PostController : ControllerBase
 
 		return NoContent();
 	}
+
+    [HttpDelete("{id}/topics")]
+	public async Task<IActionResult> RemoveTopicsFromPostAsync(Guid id, [FromBody] List<Guid> topicIds)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		await _postService.RemoveTopicsFromPostAsync(id, userId, topicIds);
+		return NoContent();
+	}
 }
