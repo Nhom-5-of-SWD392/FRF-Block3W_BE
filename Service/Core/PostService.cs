@@ -281,7 +281,9 @@ public class PostService : IPostService
                 Content = post.Content,
                 Status = post.Status,
                 PostBy = post.PostBy!.FirstName + " " + post.PostBy.LastName,
+                AuthorImage = post.PostBy!.AvatarUrl,
                 ConfirmBy = post.ComfirmById,
+                Reason = post.Reason,
                 CreatedBy = post.CreatedBy,
                 UpdatedBy = post.UpdatedBy,
                 Topics = post.PostTopic?.Select(pt => new TopicViewModel
@@ -437,7 +439,7 @@ public class PostService : IPostService
                 AuthorImage = post.PostBy!.AvatarUrl,
                 Ingredients = post.PostIngredients?.Select(pi => new IngredientDetail
                 {
-                    Id = pi.Id,
+                    Id = pi.Ingredient!.Id,
                     Name = pi.Ingredient!.Name,
                     Quantity = pi.Quantity,
                     Unit = pi.Unit
@@ -823,10 +825,15 @@ public class PostService : IPostService
 
                 await _dataContext.Favorite.AddAsync(favorite);
             }
+            else
+            {
+                existingFavorite!.UpdatedAt = DateTime.Now;
 
-            existingFavorite!.UpdatedAt = DateTime.Now;
-            existingFavorite!.UpdatedBy = userGuid;
+                existingFavorite!.UpdatedBy = userGuid;
 
+                _dataContext.Favorite.Update(existingFavorite);
+            }
+            
             await _dataContext.SaveChangesAsync();
 
             return "Đã lưu vào danh sách yêu thích!";

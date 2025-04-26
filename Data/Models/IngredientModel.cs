@@ -14,8 +14,10 @@ public class IngredientCreateModel
 
 public class IngredientUpdateModel
 {
-	public Guid Id { get; set; }
-	public string Name { get; set; } = string.Empty;
+    public Guid Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string Quantity { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
 }
 
 // PostIngredient View Model

@@ -19,7 +19,8 @@ public class TopicController : ControllerBase
 	}
 
 	[HttpGet]
-	public async Task<IActionResult> GetAll([FromQuery] TopicQueryModel query)
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll([FromQuery] TopicQueryModel query)
 	{
 		var data = await _topicService.GetAll(query);
 
