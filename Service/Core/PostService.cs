@@ -27,6 +27,7 @@ public interface IPostService
     Task<string> AddPostToFavoriteList(Guid postId, string userId);
     Task<Guid> RemovePostFromFavoriteList(Guid postId, string userId);
     Task<Guid> UpdatePostAsync(string userId, Guid id, PostUpdateModel model);
+	Task UpdateIngredientsAsync(Guid postId, string userId, List<IngredientUpdateModel> model);
 }
 public class PostService : IPostService
 {
@@ -878,4 +879,51 @@ public class PostService : IPostService
             throw new Exception(e.Message);
         }
     }
+
+	public async Task UpdateIngredientsAsync(Guid postId, string userId, List<IngredientUpdateModel> model)
+	{
+		try
+		{
+			var userGuid = Guid.Parse(userId);
+
+			var post = await _dataContext.Post
+				.Include(p => p.PostIngredients!)
+					.ThenInclude(pi => pi.Ingredient)
+				.FirstOrDefaultAsync(p => p.Id == postId && p.PostById == userGuid && !p.IsDeleted);
+
+			if (post == null)
+				throw new Exception(ErrorMessage.PostNotMatchWithUser);
+
+			foreach (var item in model)
+			{
+				var existingPostIngredient = post.PostIngredients!
+					.FirstOrDefault(pi => pi.IngredientId == item.Id && !pi.IsDeleted);
+
+				if (existingPostIngredient != null)
+				{
+					existingPostIngredient.Unit = item.Unit;
+					existingPostIngredient.Quantity = item.Quantity;
+					existingPostIngredient.UpdatedAt = DateTime.UtcNow;
+					existingPostIngredient.UpdatedBy = userGuid;
+
+					if (existingPostIngredient.Ingredient != null)
+					{
+						existingPostIngredient.Ingredient.Name = item.Name;
+						existingPostIngredient.Ingredient.UpdatedAt = DateTime.UtcNow;
+						existingPostIngredient.Ingredient.UpdatedBy = userGuid;
+						_dataContext.Ingredient.Update(existingPostIngredient!.Ingredient);
+					}
+				}
+			}
+
+			post.Status = PostStatus.EditedPendingApproval;
+
+			await _dataContext.SaveChangesAsync();
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
+	}
 }

@@ -20,6 +20,7 @@ public class IngredientUpdateModel
     public string Unit { get; set; } = string.Empty;
 }
 
+
 // PostIngredient View Model
 public class IngredientDetailModel 
 {

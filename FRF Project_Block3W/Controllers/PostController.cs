@@ -193,4 +193,15 @@ public class PostController : ControllerBase
 
         return Ok(result);
     }
+
+	//chức năng update nguyên liệu cho post, Update 1 hoặc nhiều nguyên liệu đã có trong post
+	[HttpPut("{id}/ingredients")]
+	public async Task<IActionResult> UpdateIngredientsAsync(Guid id, [FromBody] List<IngredientUpdateModel> ingredients)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+
+		await _postService.UpdateIngredientsAsync(id, userId, ingredients);
+
+		return NoContent();
+	}
 }
