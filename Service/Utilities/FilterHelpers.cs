@@ -1,19 +1,60 @@
 ﻿using Data.EFCore;
+using Data.Entities;
+using Data.Enum;
 
-namespace Service.Utilities
+namespace Service.Utilities;
+
+public interface IFilterHelper<T>
 {
-    public interface IFilterHelper<T>
+    IQueryable<T> ApplyFilterRequest(IQueryable<T> entities, Dictionary<string, string> filters);
+	IQueryable<T> ApplyFilterPost(IQueryable<T> entities, Dictionary<string, string> filters);
+}
+
+public class FilterHelper<T> : IFilterHelper<T>
+{
+    private readonly DataContext _dataContext;
+
+    public FilterHelper(DataContext dataContext)
     {
+        _dataContext = dataContext;
     }
 
-    public class FilterHelper<T> : IFilterHelper<T>
-    {
-        private readonly DataContext _dataContext;
+	public IQueryable<T> ApplyFilterPost(IQueryable<T> entities, Dictionary<string, string> filters)
+	{
+		if (typeof(T) == typeof(Post))
+		{
+			var posts = entities as IQueryable<Post>;
 
-        public FilterHelper(DataContext dataContext)
+			if (filters.ContainsKey("Status") && Enum.TryParse(filters["Status"], out PostStatus status))
+			{
+				posts = posts.Where(c => c.Status == status);
+			}
+
+            if (filters.ContainsKey("TopicId") && Guid.TryParse(filters["TopicId"], out Guid topicId))
+            {
+                posts = posts.Where(p => p.PostTopic.Any(pt => pt.TopicId == topicId));
+            }
+
+            return posts as IQueryable<T>;
+		}
+
+		return entities;
+	}
+
+	public IQueryable<T> ApplyFilterRequest(IQueryable<T> entities, Dictionary<string, string> filters)
+    {
+        if (typeof(T) == typeof(ModeratorApplication))
         {
-            _dataContext = dataContext;
+            var requests = entities as IQueryable<ModeratorApplication>;
+
+            if (filters.ContainsKey("Status") && Enum.TryParse(filters["Status"], out ApplicationStatus status))
+            {
+                requests = requests.Where(c => c.Status == status);
+            }
+
+            return requests as IQueryable<T>;
         }
 
+        return entities;
     }
 }

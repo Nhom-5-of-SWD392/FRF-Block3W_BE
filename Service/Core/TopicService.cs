@@ -1,0 +1,300 @@
+﻿using AutoMapper;
+using Data.EFCore;
+using Data.Entities;
+using Data.Enum;
+using Data.Models;
+using Microsoft.EntityFrameworkCore;
+using Service.Utilities;
+
+namespace Service.Core;
+
+public interface ITopicService
+{
+	Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query);
+	Task<Guid> Create(string userId, TopicCreateModel model);
+	Task<Guid> Update(string userId, Guid id, TopicUpdateModel model);
+	Task<Guid> Delete(Guid id);
+    Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId);
+}
+public class TopicService : ITopicService
+{
+	private readonly DataContext _dataContext;
+	private readonly IMapper _mapper;
+	private readonly ISortHelpers<Topic> _sortHelpers;
+    private readonly ICloudinaryService _cloudinaryService;
+
+    public TopicService(DataContext dataContext, IMapper mapper, ISortHelpers<Topic> sortHelpers, ICloudinaryService cloudinaryService)
+	{
+		_dataContext = dataContext;
+		_mapper = mapper;
+		_sortHelpers = sortHelpers;
+        _cloudinaryService = cloudinaryService;
+	}
+    public async Task<Topic> GetById(Guid id)
+    {
+        try
+        {
+            var topic = await _dataContext.Topic
+                .FirstOrDefaultAsync(t => !t.IsDeleted && t.Id == id);
+            if (topic == null)
+            {
+                throw new AppException(ErrorMessage.TopicNotFound);
+            }
+
+            return topic;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> Create(string userId, TopicCreateModel model)
+	{
+		try
+		{
+			if (string.IsNullOrEmpty(userId))
+			{
+				throw new AppException(ErrorMessage.Unauthorize);
+			}
+
+            string? imageUrl = null;
+
+            var data = _mapper.Map<TopicCreateModel, Topic>(model);
+
+            string path = $"{data.Name}/topic";
+
+            if (model.ImageUrl != null)
+            {
+                if (!model.ImageUrl.ContentType.StartsWith("image/"))
+                {
+                    throw new AppException(ErrorMessage.OnlyAllowImage);
+                }
+
+                imageUrl = await _cloudinaryService.UploadImageAsync(model.ImageUrl, path);
+            }
+
+            data.CreatedBy = new Guid(userId);
+
+            data.ImageUrl = imageUrl;
+
+			await _dataContext.Topic.AddAsync(data);
+
+			await _dataContext.SaveChangesAsync();
+		
+			return data.Id;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+
+	public async Task<Guid> Delete(Guid id)
+	{
+		try
+		{
+			var data = await GetById(id);
+			if (data == null)
+			{
+				throw new AppException(ErrorMessage.TopicNotFound);
+			}
+			_dataContext.Topic.Remove(data);
+
+			await _dataContext.SaveChangesAsync();
+
+			return data.Id;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+
+    public async Task<PagingModel<TopicViewModel>> GetAll(TopicQueryModel query)
+    {
+        try
+        {
+            var queryTopic = _dataContext.Topic
+                .Where(x => !x.IsDeleted)
+                .Include(t => t.PostTopics)!
+                    .ThenInclude(pt => pt.Post)
+                        .ThenInclude(p => p.Medias)
+                .AsQueryable();
+
+            queryTopic = queryTopic.SearchByKeyword(t => t.Name, query.Search);
+
+            var sortedData = _sortHelpers.ApplySort(queryTopic, query.OrderBy!);
+
+            var data = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var topicView = data.Select(topic =>
+            {
+                var topicViewModel = _mapper.Map<Topic, TopicViewModel>(topic);
+
+                var matchedPost = topic.PostTopics?
+                    .Select(pt => pt.Post)
+                    .Where(post => post != null && post.PostTopic?.Count == 1)
+                    .FirstOrDefault();
+
+                var imageUrl = matchedPost?.Medias?.FirstOrDefault()?.Url;
+
+                if(matchedPost == null)
+                {
+                    topicViewModel.ImageUrl = topic.ImageUrl!;
+                }
+                else
+                {
+                    topicViewModel.ImageUrl = imageUrl!;
+                }
+
+                return topicViewModel;
+            }).ToList();
+
+            var pagingData = new PagingModel<TopicViewModel>()
+            {
+                PageIndex = data.CurrentPage,
+                PageSize = data.PageSize,
+                TotalCount = data.TotalCount,
+                TotalPages = data.TotalPages,
+                pagingData = topicView
+            };
+
+            return pagingData;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+
+    public async Task<Guid> Update(string userId, Guid id, TopicUpdateModel model)
+	{
+		try
+		{
+			if (string.IsNullOrEmpty(userId))
+				throw new AppException(ErrorMessage.Unauthorize);
+
+			var data = await GetById(id);
+
+			if (data == null)
+				throw new AppException(ErrorMessage.TopicNotFound);
+
+            string? imageUrl = null;
+
+            string path = $"{data.Name}/topic";
+
+            if (model.ImageUrl != null)
+            {
+                if (!model.ImageUrl.ContentType.StartsWith("image/"))
+                {
+                    throw new AppException(ErrorMessage.OnlyAllowImage);
+                }
+
+                imageUrl = await _cloudinaryService.UploadImageAsync(model.ImageUrl, path);
+            }
+
+            var updateData = _mapper.Map(model, data);
+
+            updateData.ImageUrl = imageUrl;
+
+            updateData.UpdatedBy = new Guid(userId);
+
+            _dataContext.Topic.Update(updateData);
+
+			await _dataContext.SaveChangesAsync();
+
+			return data.Id;
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw new Exception(e.Message);
+		}
+	}
+
+    public async Task<PostTopicResponse?> GetPostsByTopicAsync(Guid topicId)
+    {
+        try
+        {
+            var topic = await _dataContext.Topic
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.PostBy)
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.PostTopic)
+                .Include(t => t.PostTopics!)
+                    .ThenInclude(pt => pt.Post!)
+                        .ThenInclude(p => p.Medias)
+                .Include(t => t.PostTopics!)
+                .ThenInclude(pt => pt.Post!)
+                    .ThenInclude(p => p.PostIngredients!)
+                        .ThenInclude(pi => pi.Ingredient)
+                .FirstOrDefaultAsync(t => t.Id == topicId && !t.IsDeleted);
+
+            if (topic == null)
+                throw new AppException(ErrorMessage.TopicNotFound);
+
+            var approvedPosts = topic.PostTopics!
+                .Select(pt => pt.Post!)
+                .Where(post => post.Status == PostStatus.Approved)
+                .ToList();
+
+            var matchedPost = approvedPosts
+                .FirstOrDefault(post => post.PostTopic?.Count == 1 && post.PostTopic.First().TopicId == topicId);
+
+            var imageUrl = matchedPost?.Medias
+                ?.FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url;
+
+            var ingredientNames = approvedPosts
+            .SelectMany(post => post.PostIngredients ?? new List<PostIngredient>())
+            .Where(pi => pi.Ingredient != null)
+            .Select(pi => pi.Ingredient!.Name)
+            .Distinct()
+            .ToList();
+
+            var result = new PostTopicResponse
+            {
+                Id = topic.Id,
+                Name = topic.Name,
+                ImageUrl = imageUrl,
+                Posts = approvedPosts.Select(post =>
+                {
+                    var author = post.PostBy;
+                    var ingredientNames = post.PostIngredients?
+                        .Where(pi => pi.Ingredient != null)
+                        .Select(pi => pi.Ingredient!.Name)
+                        .Distinct()
+                        .ToList() ?? new List<string>();
+                    return new PostResponse
+                    {
+                        Id = post.Id,
+                        Title = post.Title,
+                        Content = post.Content,
+                        Media = post.Medias!
+                            .FirstOrDefault(m => !m.IsDeleted && m.Type == MediaType.Image)?.Url,
+                        AuthorAvatar = author != null
+                            ? $"{author.AvatarUrl}"
+                            : string.Empty,
+                        AuthorName = author != null
+                            ? $"{author.FirstName} {author.LastName}"
+                            : "Thành viên ẩn danh",
+                        Ingredients = ingredientNames
+                    };
+                }).ToList(),
+            };
+
+            return result;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new Exception(e.Message);
+        }
+    }
+}

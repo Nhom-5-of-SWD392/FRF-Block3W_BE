@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Data.Entities
+namespace Data.Entities;
+
+public class PostTopic : BaseEntities
 {
-	internal class PostTopic
-	{
-	}
+    //Foreign Keys
+    public Guid PostId { get; set; }
+    [ForeignKey("PostId")]
+    public Post? Post { get; set; }
+
+    public Guid TopicId { get; set; }
+    [ForeignKey("TopicId")]
+    public Topic? Topic { get; set; }
 }

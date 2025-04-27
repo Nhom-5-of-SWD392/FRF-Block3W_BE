@@ -1,15 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Data.Entities
+namespace Data.Entities;
+
+public class BaseEntities
 {
-    public class BaseEntities
-    {
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Key]
-        public Guid Id { get; set; }
-        public DateTime DateCreate { get; set; } = DateTime.UtcNow;
-        public DateTime DateUpdate { get; set; } = DateTime.UtcNow;
-        public bool IsDeleted { get; set; } = false;
-    }
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    [Key]
+    public Guid Id { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid UpdatedBy { get; set; }
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsDeleted { get; set; } = false;
 }
