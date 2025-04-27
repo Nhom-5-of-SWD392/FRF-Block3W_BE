@@ -141,7 +141,15 @@ public class PostController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("{id}/leave-comment")]
+	[HttpPost("{id}/topics")]
+	public async Task<IActionResult> AddTopicsToPostAsync(Guid id, [FromBody] List<Guid> topicIds)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		await _postService.AddTopicsToPostAsync(id, userId, topicIds);
+		return NoContent();
+	}
+
+	[HttpPost("{id}/leave-comment")]
     [Authorize(Roles = "Member, Administrator")]
     public async Task<IActionResult> LeaveComment(Guid id, [FromBody] CommentCreateModel model)
     {

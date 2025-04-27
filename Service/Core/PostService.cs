@@ -29,6 +29,8 @@ public interface IPostService
     Task<Guid> UpdatePostAsync(string userId, Guid id, PostUpdateModel model);
 	Task UpdateIngredientsAsync(Guid postId, string userId, List<IngredientUpdateModel> model);
     Task RemoveTopicsFromPostAsync(Guid postId, string userId, List<Guid> topicIds);
+
+    Task AddTopicsToPostAsync(Guid postId, string userId, List<Guid> topicIds);
 }
 public class PostService : IPostService
 {
@@ -949,6 +951,49 @@ public class PostService : IPostService
 			if (postTopics.Any())
 			{
 				_dataContext.PostTopic.RemoveRange(postTopics);
+
+				post.Status = PostStatus.EditedPendingApproval;
+
+				await _dataContext.SaveChangesAsync();
+			}
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
+	}
+
+	public async Task AddTopicsToPostAsync(Guid postId, string userId, List<Guid> topicIds)
+	{
+		try
+		{
+			var userGuid = Guid.Parse(userId);
+
+			var post = await _dataContext.Post
+				.Include(p => p.PostTopic)
+				.FirstOrDefaultAsync(p => p.Id == postId && p.PostById == userGuid && !p.IsDeleted);
+
+			if (post == null)
+				throw new Exception(ErrorMessage.PostNotMatchWithUser);
+
+			var existingTopicIds = post.PostTopic!
+				.Where(pt => !pt.IsDeleted)
+				.Select(pt => pt.TopicId)
+				.ToHashSet();
+
+			var newPostTopics = topicIds
+				.Where(id => !existingTopicIds.Contains(id))
+				.Select(id => new PostTopic
+				{
+					PostId = postId,
+					TopicId = id
+				})
+				.ToList();
+
+			if (newPostTopics.Any())
+			{
+				await _dataContext.PostTopic.AddRangeAsync(newPostTopics);
 
 				post.Status = PostStatus.EditedPendingApproval;
 
