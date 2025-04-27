@@ -220,4 +220,20 @@ public class PostController : ControllerBase
 		await _postService.RemoveTopicsFromPostAsync(id, userId, topicIds);
 		return NoContent();
 	}
+
+	[HttpDelete("{id}/Instruction")]
+	public async Task<IActionResult> DeleteInstructionAsync(Guid id, [FromQuery] Guid instructionId)
+	{
+		var userId = User.Claims.GetUserIdFromJwtToken();
+		await _postService.DeleteInstructionAsync(userId, id, instructionId);
+		return NoContent();
+	}
+
+	[HttpDelete("{id}/ingredients")]
+    public async Task<IActionResult> DeleteIngredientAsync(Guid id, [FromQuery] Guid ingredientId)
+    {
+        var userId = User.Claims.GetUserIdFromJwtToken();
+        await _postService.DeleteIngredientAsync(userId, id, ingredientId);
+        return NoContent();
+    }
 }

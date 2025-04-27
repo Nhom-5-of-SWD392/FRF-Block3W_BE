@@ -31,6 +31,9 @@ public interface IPostService
     Task RemoveTopicsFromPostAsync(Guid postId, string userId, List<Guid> topicIds);
 
     Task AddTopicsToPostAsync(Guid postId, string userId, List<Guid> topicIds);
+    Task DeleteInstructionAsync(string userId, Guid postId, Guid instructionId);
+
+    Task DeleteIngredientAsync(string userId, Guid postId, Guid ingredientId);
 }
 public class PostService : IPostService
 {
@@ -964,6 +967,45 @@ public class PostService : IPostService
 		}
 	}
 
+	public async Task DeleteIngredientAsync(string userId, Guid postId, Guid ingredientId)
+	{
+		var userGuid = Guid.Parse(userId);
+
+		var post = await _dataContext.Post
+			.Include(p => p.PostIngredients)
+			.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted && p.PostById == userGuid)
+			?? throw new AppException(ErrorMessage.PostNotMatchWithUser);
+
+		var postIngredient = post.PostIngredients!
+			.FirstOrDefault(pi => pi.IngredientId == ingredientId && !pi.IsDeleted)
+			?? throw new AppException(ErrorMessage.IdNotExist);
+
+		_dataContext.PostIngredient.Remove(postIngredient);
+
+		post.Status = PostStatus.EditedPendingApproval;
+
+		await _dataContext.SaveChangesAsync();
+	}
+
+	public async Task DeleteInstructionAsync(string userId, Guid postId, Guid instructionId)
+	{
+		var userGuid = Guid.Parse(userId);
+
+		var post = await _dataContext.Post
+			.Include(p => p.Instructions)
+			.FirstOrDefaultAsync(p => p.Id == postId && !p.IsDeleted && p.PostById == userGuid)
+			?? throw new AppException(ErrorMessage.PostNotMatchWithUser);
+
+		var instruction = post.Instructions!
+			.FirstOrDefault(i => i.Id == instructionId && !i.IsDeleted)
+			?? throw new AppException(ErrorMessage.IdNotExist);
+
+		_dataContext.Instruction.Remove(instruction);
+
+		post.Status = PostStatus.EditedPendingApproval;
+
+		await _dataContext.SaveChangesAsync();
+	}
 	public async Task AddTopicsToPostAsync(Guid postId, string userId, List<Guid> topicIds)
 	{
 		try
