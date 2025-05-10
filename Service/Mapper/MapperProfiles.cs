@@ -2,29 +2,45 @@
 using Data.Entities;
 using Data.Models;
 
-namespace Service.Mapper
+namespace Service.Mapper;
+
+public class MapperProfiles : Profile
 {
-    public class MapperProfiles : Profile
+    public MapperProfiles()
     {
-        public MapperProfiles()
-        {
-            //Role
-            CreateMap<RoleCreateModel, Role>();
-            CreateMap<Role, RoleViewModel>();
-            CreateMap<RoleUpdateModel, Role>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+        //User
+        CreateMap<UserCreateModel, User>();
+        CreateMap<User, UserViewModel>();
+        CreateMap<UserUpdateModel, User>()
+            .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
 
-            //Permission
-            CreateMap<PermissionCreateModel, Permission>();
-            CreateMap<Permission, PermissionViewModel>();
-            CreateMap<PermissionUpdateModel, Permission>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+        //Quiz
+        CreateMap<QuizCreateModel, Quiz>();
+        CreateMap<Quiz, QuizViewModel>();
 
-            //User
-            CreateMap<UserCreateModel, User>();
-            CreateMap<User, UserViewModel>();
-            CreateMap<UserUpdateModel, User>()
-                .ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
-        }
-    }
+        //QuizQuestion
+        CreateMap<QuizQuestionCreateModel, QuizQuestion>();
+
+        //QuizAnswer
+        CreateMap<QuizAnswerModel, QuizAnswer>();
+
+        //Topic
+        CreateMap<TopicCreateModel, Topic>();
+        CreateMap<Topic, TopicViewModel>();
+		CreateMap<TopicUpdateModel, Topic>()
+			.ForAllMembers(opt => opt.Condition((src, des, obj) => obj != null));
+
+		//Post
+		CreateMap<PostCreateModel, Post>();
+		CreateMap<Post, PostViewModel>();
+        CreateMap<PostUpdateModel, Post>()
+            .ForAllMembers(opt => opt.Condition((src, dest, srcMember) => srcMember != null));
+
+        //Reaction
+        CreateMap<ReactionCreateModel, Reaction>();
+		CreateMap<Reaction, ReactionViewModel>();
+
+		//Favorite
+		CreateMap<FavoriteCreateModel, Favorite>();
+	}
 }

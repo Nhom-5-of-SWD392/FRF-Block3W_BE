@@ -1,8 +1,11 @@
+using Data.EFCore;
 using Data.Models;
 using FRF_Project_Block3W.Extensions;
 using FRF_Project_Block3W.Helpers;
 using Microsoft.OpenApi.Models;
+using Service.Core;
 using Service.Mapper;
+using Service.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,16 +14,19 @@ builder.Services.ConfigurePostgreSqlServer(builder.Configuration.GetSection("DbS
 builder.Services.AddAutoMapper(typeof(MapperProfiles));
 builder.Services.ConfigCors();
 builder.Services.ConfigureJWTToken(
-    builder.Configuration.GetSection("JWT").Get<JwtModel>()
+    builder.Configuration.GetSection("JWT").Get<JwtModel>(),
+    builder.Configuration.GetSection("Authentication:Google").Get<GoogleModel>()
 );
+builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.Configure<MailSetupModel>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddBusinessServices();
+
 
 
 builder.Services.AddControllers(op =>
 {
     op.Filters.Add(new ResultManipulator());
 });
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(option =>
 {
@@ -68,7 +74,11 @@ app.UseRouting();
 
 app.UseMiddleware<ErrorHandlerMiddleware>();
 
+app.UseAuthentication();
+
 app.UseAuthorization();
+
+//app.SeedData();
 
 app.MapControllers();
 

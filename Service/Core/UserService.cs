@@ -1,9 +1,13 @@
 ﻿using AutoMapper;
+using CloudinaryDotNet.Actions;
 using Data.EFCore;
 using Data.Entities;
+using Data.Enum;
 using Data.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Org.BouncyCastle.Ocsp;
 using Service.Utilities;
 using System.Data;
 using System.IdentityModel.Tokens.Jwt;
@@ -11,219 +15,704 @@ using System.Linq.Dynamic.Core;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
-namespace Service.Core
+namespace Service.Core;
+
+public interface IUserService
 {
-    public interface IUserService
+    Task<JWTToken> Login(UserRequest model);
+    Task<JWTToken> LoginWithGoogle(string idToken);
+    Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
+    Task<User> GetById(Guid id);
+    Task<Guid> UpdatePersonalInformation(string userId, UserUpdateModel model);
+    Task<Guid> Delete(Guid id);
+    Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
+    Task<string> RequestPasswordResetAsync(PasswordResetRequestModel model);
+    Task<string> ResetPasswordAsync(PasswordResetModel passwordResetmodel);
+    Task<Guid> RegisterAsync(RegisterUserModel model);
+    Task<Guid> RegisterModeratorAsync(string userId);
+    Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model);
+    Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(string userId, string role, RequestQueryModel query);
+    Task<string> UpdateAvatarImage(string userId, IFormFile file);
+}
+public class UserService : IUserService
+{
+    private readonly DataContext _dataContext;
+    private ISortHelpers<User> _sortUserHelper;
+    private ISortHelpers<ModeratorApplication> _sortRequestHelper;
+    private IFilterHelper<User> _filterUserHelper;
+    private IFilterHelper<ModeratorApplication> _filterRequestHelper;
+    private readonly IMapper _mapper;
+    private readonly IJwtUtils _jwtUtils;
+    private readonly IConfiguration _configuration;
+    private readonly IGoogleAuthService _googleAuthService;
+    private readonly IEmailService _emailService;
+    private readonly ICloudinaryService _cloudinaryService;
+    //private readonly IFilterHelper<User> _filterHelperUser;
+
+
+    public UserService(
+            DataContext dataContext, 
+            ISortHelpers<User> sortUserHelper, 
+            ISortHelpers<ModeratorApplication> sortRequestHelper,
+            IFilterHelper<User> filterUserHelper,
+            IFilterHelper<ModeratorApplication> filterRequestHelper,
+            IMapper mapper, 
+            IConfiguration configuration, 
+            IJwtUtils jwtUtils, 
+            IGoogleAuthService googleAuthService,
+            IEmailService emailService,
+            ICloudinaryService cloudinaryService)
     {
-        Task<JWTToken> Login(UserRequest model);
-        Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query);
-        Task<UserViewModel> GetById(Guid id);
-        Task<Guid> Create(UserCreateModel model);
-        Task<Guid> Update(Guid id, UserUpdateModel model);
-        Task<Guid> Delete(Guid id);
-        Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model);
+        _dataContext = dataContext;
+        _sortUserHelper = sortUserHelper;
+        _sortRequestHelper = sortRequestHelper;
+        _filterUserHelper = filterUserHelper;
+        _filterRequestHelper = filterRequestHelper;
+        _mapper = mapper;
+        _configuration = configuration;
+        _jwtUtils = jwtUtils;
+        _googleAuthService = googleAuthService;
+        _emailService = emailService;
+        _cloudinaryService = cloudinaryService;
     }
-    public class UserService : IUserService
+
+    public async Task<JWTToken> Login(UserRequest model)
     {
-        private readonly DataContext _dataContext;
-        private ISortHelpers<User> _sortHelper;
-        private readonly IMapper _mapper;
-        private readonly IJwtUtils _jwtUtils;
-        private readonly IConfiguration _configuration;
-        //private readonly IFilterHelper<User> _filterHelperUser;
-
-
-        public UserService(DataContext dataContext, ISortHelpers<User> sortHelper, IMapper mapper, IConfiguration configuration, IJwtUtils jwtUtils)
+        try
         {
-            _dataContext = dataContext;
-            _sortHelper = sortHelper;
-            _mapper = mapper;
-            _configuration = configuration;
-            _jwtUtils = jwtUtils;
-        }
-
-        public async Task<JWTToken> Login(UserRequest model)
-        {
-            try
-            {
-                var user = await _dataContext.User
+            var user = await _dataContext.User
                 .Where(x => !x.IsDeleted && x.UserName == model.UserName)
                 .FirstOrDefaultAsync();
-                if (user == null)
-                {
-                    throw new AppException(ErrorMessage.InvalidAccount);
-                }
-                if (!BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
-                {
-                    throw new AppException(ErrorMessage.InvalidAccount);
-                }
-
-                var getRole = await _dataContext.Role
-                    .Where(x => !x.IsDeleted && x.Id == user.RoleId)
-                    .FirstOrDefaultAsync();
-
-                var authClaims = new List<Claim>
-                {
-                    new Claim("id", user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user?.FullName ?? ""),
-                    new Claim(ClaimTypes.Email, user?.Email ?? ""),
-                    new Claim("avartar", user?.Avatar ?? ""),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                    new Claim(ClaimTypes.Role, getRole.Name.ToString()),
-                };
-
-                var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user, getRole);
-
-                _dataContext.User.Update(user);
-                await _dataContext.SaveChangesAsync();
-
-                return token;
-            }
-            catch (Exception e)
+            if (user == null)
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
+                throw new AppException(ErrorMessage.InvalidAccount);
             }
-        } 
-
-        public async Task<Guid> Update(Guid id, UserUpdateModel model)
-        {
-            try
+            if (!BCrypt.Net.BCrypt.Verify(model.Password, user.Password))
             {
-                var data = await GetUser(id);
-                if (data == null)
-                {
-                    throw new AppException(ErrorMessage.IdNotExist);
-                }
-                var updateData = _mapper.Map(model, data);
-
-                _dataContext.User.Update(updateData);
-
-                await _dataContext.SaveChangesAsync();
-                return data.Id;
+                throw new AppException(ErrorMessage.InvalidAccount);
             }
-            catch (Exception e)
+
+            var authClaims = new List<Claim>
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
-            }
-        }
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
+                new Claim(ClaimTypes.Email, user?.Email ?? ""),
+                new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
+                new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim("isModerator", user!.IsModerator.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
 
-        public async Task<Guid> Delete(Guid id)
-        {
-            var data = await GetUser(id);
-            if (data == null)
-            {
-                throw new AppException(ErrorMessage.IdNotExist);
-            }
-            data.IsDeleted = true;
-            _dataContext.User.Update(data);
+            var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+
+            _dataContext.User.Update(user);
             await _dataContext.SaveChangesAsync();
-            return data.Id;
+
+            return token;
         }
-
-        public async Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model)
+        catch (Exception e)
         {
-            try
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<JWTToken> LoginWithGoogle(string idToken)
+    {
+        try
+        {
+            var authenticateResult = await _googleAuthService.ValidateGoogleToken(idToken);
+            if (authenticateResult == null)
             {
-                if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.AccessTokenFail);
+            }
+            var user = await _dataContext.User
+                .Where(i => i.Email == authenticateResult.Email || i.GoogleId == authenticateResult.Subject && !i.IsDeleted)
+                .FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                var newUser = new UserCreateModel
                 {
-                    throw new AppException("User is not authorized.");
-                }
+                    Email = authenticateResult.Email,
+                    FirstName = authenticateResult.GivenName ?? "",
+                    LastName = authenticateResult.FamilyName ?? "",
+                    AvatarUrl = authenticateResult.Picture ?? "",
+                    Role = UserRole.Member,
+                    UserName = authenticateResult.Email.Split('@')[0],
+                    IsModerator = false,
+                    GoogleId = authenticateResult.Subject
+                };
+                
+                var mapperData = _mapper.Map<UserCreateModel, User>(newUser);
 
-                var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
-
-                if (user == null)
-                {
-                    throw new AppException("User not found.");
-                }
-
-                if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.Password))
-                {
-                    throw new AppException("Current password is incorrect.");
-                }
-
-                if (!IsValid(model.NewPassword))
-                    throw new AppException(
-                        "Password does not meet the required complexity standards:\n" +
-                        "- At least 8 characters long\n" +
-                        "- Include UPPERCASE and lowercase letters\n" +
-                        "- At least one digit\n" +
-                        "- At least one special character @#$%^&*!_"
-                    );
-
-                if (model.NewPassword != model.ConfirmPassword)
-                {
-                    throw new AppException("New password and confirm password do not match.");
-                }
-
-                user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
-
-                _dataContext.User.Update(user);
+                await _dataContext.User.AddAsync(mapperData);
 
                 await _dataContext.SaveChangesAsync();
 
-                return "Change password successfully.";
+                user = mapperData;
             }
-            catch (Exception e)
+
+            var authClaims = new List<Claim>
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
-            }
+                new Claim("id", user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user?.FirstName + " " + user?.LastName ?? ""),
+                new Claim(ClaimTypes.Email, user?.Email ?? ""),
+                new Claim(ClaimTypes.Role, user?.Role.ToString() ?? ""),
+                new Claim("avartar", user?.AvatarUrl ?? ""),
+                new Claim("isModerator", user!.IsModerator.ToString()),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
+
+            var token = _jwtUtils.GenerateToken(authClaims, _configuration.GetSection("JWT").Get<JwtModel>(), user);
+
+            return token;
         }
-
-        private void SearchByKeyWord(ref IQueryable<User> users, string keyword)
+        catch (Exception e)
         {
-            if (!users.Any() || string.IsNullOrWhiteSpace(keyword))
-                return;
-            users = users.Where(o => o.FullName.ToLower().Contains(keyword.Trim().ToLower()) || o.UserName.ToLower().Contains(keyword.Trim().ToLower()) || o.Email.ToLower().Contains(keyword.Trim().ToLower()));
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
         }
+    }
 
-        public bool IsValid(string password)
+    public async Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
+    {
+        try
         {
-            if (password.Length < 8) return false;
+            var queryUser = _dataContext.User
+                .Where(u => !u.IsDeleted);
 
-            if (!Regex.IsMatch(password, @"[A-Z]")) return false;
+            queryUser = queryUser.SearchByKeyword(r => r.FirstName + " " + r.LastName, query.Search);
 
-            if (!Regex.IsMatch(password, @"[a-z]")) return false;
+            var filters = new Dictionary<string, string>();
 
-            if (!Regex.IsMatch(password, @"\d")) return false;
+            //if (query.Status.HasValue)
+            //{
+            //    filters.Add("Status", query.Status.ToString());
+            //}
 
-            if (!Regex.IsMatch(password, @"[@#$%^&*!_]")) return false;
+            //queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
 
-            return true;
-        }
+            var sortedData = _sortUserHelper.ApplySort(queryUser, query.OrderBy!);
 
-        private async Task<User> GetUser(Guid id)
-        {
-            try
+            var pagedData = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var userViewModel = pagedData.Select(user => new UserViewModel
             {
-                var data = await _dataContext.User
-                    .Where(x => !x.IsDeleted && x.Id == id)
-                    .SingleOrDefaultAsync();
-                if (data == null) throw new AppException(ErrorMessage.IdNotExist);
-                return data;
-            }
-            catch (Exception e)
+                Id = user.Id,
+                FullName = user.FirstName + " " + user.LastName,
+                UserName = user.UserName,
+                Email = user.Email,
+                Avatar = user.AvatarUrl,
+                IsModerator = user.IsModerator,
+                UpdatedAt = user.UpdatedAt, 
+                UpdatedBy = user.UpdatedBy,
+            }).ToList();
+
+            return new PagingModel<UserViewModel>
             {
-                Console.WriteLine(e);
-                throw new AppException(e.Message);
+                PageIndex = pagedData.CurrentPage,
+                PageSize = pagedData.PageSize,
+                TotalCount = pagedData.TotalCount,
+                TotalPages = pagedData.TotalPages,
+                pagingData = userViewModel
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<User> GetById(Guid id)
+    {
+        try
+        {
+            var user = await _dataContext.User
+                .FirstOrDefaultAsync(u => !u.IsDeleted && u.Id == id);
+            if (user == null)
+            {
+                throw new AppException(ErrorMessage.UserNotFound);
             }
-        }
 
-        public Task<PagingModel<UserViewModel>> GetAll(UserQueryModel query)
-        {
-            throw new NotImplementedException();
+            return user;
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
 
-        public Task<UserViewModel> GetById(Guid id)
+    public async Task<Guid> UpdatePersonalInformation(string userId, UserUpdateModel model)
+    {
+        try
         {
-            throw new NotImplementedException();
-        }
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
 
-        public Task<Guid> Create(UserCreateModel model)
-        {
-            throw new NotImplementedException();
+            var user = await GetById(new Guid(userId));
+
+            if (!string.IsNullOrWhiteSpace(model.Phone))
+            {
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.Phone == model.Phone && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.PhoneNumberExist);
+            }
+
+            if (model.Dob.HasValue && model.Dob.Value > DateTime.UtcNow)
+                throw new AppException(ErrorMessage.DobNotValid);
+
+            if (user.GoogleId != null && !string.IsNullOrEmpty(model.Email) && model.Email != user.Email)
+                throw new AppException(ErrorMessage.DoNotChangeEmail);
+
+            if (!string.IsNullOrWhiteSpace(model.Email))
+            {
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.Email == model.Email && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.EmailExist);
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.UserName))
+            {
+                if (model.UserName.Length < 4 || model.UserName.Contains(" "))
+                    throw new AppException(ErrorMessage.UserNameValid);
+
+                var isDuplicate = await _dataContext.User.AnyAsync(u => u.UserName == model.UserName && u.Id != user.Id);
+                if (isDuplicate)
+                    throw new AppException(ErrorMessage.UserNameExist);
+            }
+
+            if (!string.IsNullOrEmpty(model.Bio) && model.Bio.Length > 250)
+                throw new AppException(ErrorMessage.BioValid);
+
+            var updateData = _mapper.Map(model, user);
+            updateData.UpdatedBy = new Guid(userId);
+
+            _dataContext.User.Update(updateData);
+            await _dataContext.SaveChangesAsync();
+
+            return user.Id;
         }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> Delete(Guid id)
+    {
+        var data = await GetById(id);
+
+        data.IsDeleted = true;
+
+        _dataContext.User.Update(data);
+
+        await _dataContext.SaveChangesAsync();
+
+        return data.Id;
+    }
+
+    public async Task<string> ChangePasswordAsync(string userId, ChangePasswordModel model)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Id == Guid.Parse(userId));
+
+            if (user == null)
+            {
+                throw new AppException("User not found.");
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.Password))
+            {
+                throw new AppException("Current password is incorrect.");
+            }
+
+            if (!IsValid(model.NewPassword))
+                throw new AppException(
+                    "Password does not meet the required complexity standards:\n" +
+                    "- At least 8 characters long\n" +
+                    "- Include UPPERCASE and lowercase letters\n" +
+                    "- At least one digit\n" +
+                    "- At least one special character @#$%^&*!_"
+                );
+
+            if (model.NewPassword != model.ConfirmPassword)
+            {
+                throw new AppException("New password and confirm password do not match.");
+            }
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+
+            _dataContext.User.Update(user);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Change password successfully.";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<string> RequestPasswordResetAsync(PasswordResetRequestModel model)
+    {
+        try
+        {
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Email == model.Email && !u.IsDeleted);
+            if (user == null)
+                throw new AppException(ErrorMessage.EmailNotExist);
+
+            var token = Guid.NewGuid().ToString();
+            var resetLink = $"https://intern-s.vercel.app/reset-password?email={model.Email}&token={token}";
+
+            user.ForgotPwdToken = token;
+            user.ForgotPwdTokenExpiration = DateTime.UtcNow.AddHours(24);
+
+            await _dataContext.SaveChangesAsync();
+
+            await _emailService.SendResetPasswordEmailAsync(user, model.Email, resetLink);
+
+            return resetLink;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<string> ResetPasswordAsync(PasswordResetModel passwordResetModel)
+    {
+        try
+        {
+            var user = await _dataContext.User.FirstOrDefaultAsync(u => u.Email == passwordResetModel.Email && !u.IsDeleted);
+
+            if (user == null || user.ForgotPwdToken != passwordResetModel.Token)
+                throw new AppException(ErrorMessage.InvalidTokenOrEmail);
+
+            if (user.ForgotPwdToken != passwordResetModel.Token || user.ForgotPwdTokenExpiration < DateTime.UtcNow)
+                throw new AppException(ErrorMessage.TokenExpired);
+
+
+            if (!IsValid(passwordResetModel.NewPassword))
+                throw new AppException(ErrorMessage.ValidatePassword);
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(passwordResetModel.NewPassword);
+
+            user.ForgotPwdToken = null;
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Thanh đổi mật khẩu thành công";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> RegisterAsync(RegisterUserModel model)
+    {
+        try
+        {
+            if (model.Password != model.ConfirmPassword)
+                throw new AppException(ErrorMessage.ConfirmPasswordNotMatch);
+
+            var existingUser = await _dataContext.User.FirstOrDefaultAsync(x => x.Email == model.Email || x.UserName == model.UserName || x.Phone == model.Phone);
+            if (existingUser != null)
+                throw new AppException(ErrorMessage.AccountExist);
+
+            if (!IsValid(model.Password))
+                throw new AppException(ErrorMessage.ValidatePassword);
+
+            string avatarUrl = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
+
+            var user = new User
+            {
+                FirstName = model.FirstName,
+                LastName = model.LastName,
+                Email = model.Email,
+                Phone = model.Phone,
+                UserName = model.UserName,
+                Password = BCrypt.Net.BCrypt.HashPassword(model.Password),
+                Dob = model.Dob.HasValue ? DateTime.SpecifyKind(model.Dob.Value, DateTimeKind.Utc) : null,
+                Gender = model.Gender ?? Gender.Other,
+                AvatarUrl = avatarUrl,
+                Role = UserRole.Member
+            };
+
+            await _dataContext.User.AddAsync(user);
+
+            await _dataContext.SaveChangesAsync();
+
+            return user.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<Guid> RegisterModeratorAsync(string userId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            var userGuid = new Guid(userId);
+
+            var existingApplication = await _dataContext.ModeratorApplication
+                .FirstOrDefaultAsync(x => x.RegisterById == userGuid && x.Status == ApplicationStatus.Pending);
+
+            var interviewQuizzes = await _dataContext.Quiz
+                .Where(q => q.Type == QuizType.Interview && !q.IsDeleted)
+                .ToListAsync();
+
+            if (!interviewQuizzes.Any())
+                throw new Exception(ErrorMessage.QuizNotExist);
+
+            var random = new Random();
+            var selectedQuiz = interviewQuizzes[random.Next(interviewQuizzes.Count)];
+
+            if (existingApplication != null)
+                throw new AppException(ErrorMessage.AlreadyApplyModerator);
+
+            var quizResult = new QuizResult
+            {
+                QuizId = selectedQuiz.Id,
+                Status = QuizResultStatus.Pending,
+                Result = string.Empty,
+                FinalScore = 0,
+                CreatedBy = userGuid,
+            };
+            await _dataContext.QuizResult.AddAsync(quizResult);
+
+            var application = new ModeratorApplication
+            {
+                RegisterById = userGuid,
+                QuizResultId = quizResult.Id,
+                Status = ApplicationStatus.Pending,
+                CreatedBy = userGuid,
+            };
+
+            await _dataContext.ModeratorApplication.AddAsync(application);
+
+            await _dataContext.SaveChangesAsync();
+
+            return selectedQuiz.Id;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<string> ProcessModeratorApplicationAsync(string confirmedId, Guid requestId, ModeratorApplicationApproveModel model)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(confirmedId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var request = await _dataContext.ModeratorApplication
+                .Include(x => x.Registrant)
+                .FirstOrDefaultAsync(x => x.Id == requestId);
+
+            if (request == null) throw new AppException(ErrorMessage.RequestNotFound);
+
+            if (request.Status != ApplicationStatus.Pending)
+                throw new AppException(ErrorMessage.RequestAlreadyProcessed);
+
+            request.ConfirmedById = new Guid(confirmedId);
+            request.UpdatedBy = new Guid(confirmedId);
+            request.Status = model.IsApproved ? ApplicationStatus.Approved : ApplicationStatus.Rejected;
+            request.Reason = model.Reason;
+
+            if (model.IsApproved)
+            {
+                var user = request.Registrant!;
+
+                user.IsModerator = true;
+
+                _dataContext.User.Update(user);
+            }
+
+            _dataContext.ModeratorApplication.Update(request);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Approved!";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<PagingModel<RequestViewModel>> GetAllApplicationsAsync(string userId, string role, RequestQueryModel query)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+                throw new AppException(ErrorMessage.Unauthorize);
+
+            IQueryable<ModeratorApplication> queryRequest;
+
+            if (role == UserRole.Administrator.ToString())
+            {
+                queryRequest = _dataContext.ModeratorApplication
+                .Include(m => m.Registrant)
+                .Include(m => m.Confirmer)
+                .Include(m => m.QuizResult)
+                    .ThenInclude(qr => qr.Quiz)
+                .Where(m => !m.IsDeleted);
+
+                queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);
+
+                var filters = new Dictionary<string, string>();
+
+                if (query.Status.HasValue)
+                {
+                    filters.Add("Status", query.Status.ToString());
+                }
+
+                queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+            }
+            else
+            {
+                queryRequest = _dataContext.ModeratorApplication
+                .Include(m => m.Registrant)
+                .Include(m => m.Confirmer)
+                .Include(m => m.QuizResult)
+                    .ThenInclude(qr => qr.Quiz)
+                .Where(m => !m.IsDeleted && m.CreatedBy == Guid.Parse(userId));
+
+                queryRequest = queryRequest.SearchByKeyword(r => r.Registrant!.FirstName + " " + r.Registrant.LastName, query.Search);
+
+                var filters = new Dictionary<string, string>();
+
+                if (query.Status.HasValue)
+                {
+                    filters.Add("Status", query.Status.ToString());
+                }
+
+                queryRequest = _filterRequestHelper.ApplyFilterRequest(queryRequest, filters);
+            }
+
+            var sortedData = _sortRequestHelper.ApplySort(queryRequest, query.OrderBy!);
+
+            var pagedData = await sortedData.ToPagedListAsync(query.PageIndex, query.PageSize);
+
+            var requestViewModels = pagedData.Select(reqs => new RequestViewModel
+            {
+                Id = reqs.Id,
+                CreatedAt = reqs.CreatedAt,
+                Status = reqs.Status,
+                Reason = reqs.Reason,
+                RegisterById = reqs.RegisterById,
+                RegistrantName = reqs.Registrant != null ? reqs.Registrant.FirstName + " " + reqs.Registrant.LastName : null,
+                RegistrantEmail = reqs.Registrant?.Email,
+                ConfirmedById = reqs.ConfirmedById,
+                ConfirmerName = reqs.Confirmer != null ? reqs.Confirmer.FirstName + " " + reqs.Confirmer.LastName : null,
+                CreatedBy = reqs.CreatedBy,
+                UpdatedBy = reqs.UpdatedBy,
+                QuizResult = reqs.QuizResult != null
+                    ? new QuizResultViewRequest
+                    {
+                        Id = reqs.QuizResult.Id,
+                        FinalScore = reqs.QuizResult.FinalScore,
+                        Result = reqs.QuizResult.Result,
+                        Status = reqs.QuizResult.Status,
+                        CreatedBy = reqs.QuizResult.CreatedBy,
+                        UpdatedBy = reqs.QuizResult.UpdatedBy,
+                        Quizz = reqs.QuizResult.Quiz != null 
+                        ? new QuizzModel
+                        {
+                            QuizId = reqs.QuizResult.QuizId,
+                            QuizName = reqs.QuizResult.Quiz.Name,
+                        } : new QuizzModel()
+                    }
+                    : new QuizResultViewRequest()
+            }).ToList();
+
+            return new PagingModel<RequestViewModel>
+            {
+                PageIndex = pagedData.CurrentPage,
+                PageSize = pagedData.PageSize,
+                TotalCount = pagedData.TotalCount,
+                TotalPages = pagedData.TotalPages,
+                pagingData = requestViewModels
+            };
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+    public async Task<string> UpdateAvatarImage(string userId, IFormFile file)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AppException(ErrorMessage.Unauthorize);
+            }
+
+            var user = await GetById(new Guid(userId));
+
+            string path = user.UserName + "/Avatar";
+
+            user.AvatarUrl = await _cloudinaryService.UploadImageAsync(file, path);
+            user.UpdatedBy = new Guid(userId);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _dataContext.Update(user);
+
+            await _dataContext.SaveChangesAsync();
+
+            return "Tải hình ảnh lên thành công!";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw new AppException(e.Message);
+        }
+    }
+
+
+    //private method
+    public bool IsValid(string password)
+    {
+        if (password.Length < 8) return false;
+
+        if (!Regex.IsMatch(password, @"[A-Z]")) return false;
+
+        if (!Regex.IsMatch(password, @"[a-z]")) return false;
+
+        if (!Regex.IsMatch(password, @"\d")) return false;
+
+        if (!Regex.IsMatch(password, @"[@#$%^&*!_]")) return false;
+
+        return true;
     }
 }
